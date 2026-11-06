@@ -1,0 +1,8 @@
+Run: uv venv (Hermes tools python 3.14.9) ; uv pip install aiortc slixmpp numpy
+versions: aiortc 1.16.0, av 19.0.2, aioice 0.13.0, slixmpp 1.17.0
+output:
+states connected connected iceGathering complete
+offer has: opus True | fingerprint True | setup ['a=setup:actpass'] | ice-ufrag True
+frames 194 samples 372480   (stereo-interleaved, about 3.9 s at 48 kHz)
+peak Hz ~ 220               (440 Hz tone read as interleaved stereo; tone preserved)
+Note: system Python 3.13 on NixOS fails: "ImportError: libstdc++.so.6" when importing av.

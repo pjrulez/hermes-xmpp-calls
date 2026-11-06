@@ -1,0 +1,18 @@
+schema: spec-driven
+
+context: |
+  Language: en. Keep OpenSpec headings and SHALL/MUST keywords in English.
+  Project: live XMPP audio calls for Hermes Agent (Jingle RTP, aiortc), answered from
+  Conversations on Android. Self-hosted STT (Whisper) and TTS (PocketTTS) on fw.
+  RESEARCH/ holds verified findings; mark each claim V (verified here), S (source/docs) or U (unverified).
+  Never put credentials, TURN secrets, real IPs or call audio in artifacts.
+
+rules:
+  proposal:
+    - State current state vs proposal, non-goals, dependencies, acceptance evidence.
+  design:
+    - Prefer reuse of existing Hermes pipelines and prior art over new frameworks.
+  specs:
+    - Use SHALL or MUST requirements with testable scenarios.
+  tasks:
+    - Ordered, small, each with the evidence file that proves it. Device tests are marked operator-run.

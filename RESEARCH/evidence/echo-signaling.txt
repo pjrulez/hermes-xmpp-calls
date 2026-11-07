@@ -1,0 +1,11 @@
+Echo-call bot, operator test 2026-11-07 (bot: hermes-calls-test, host fw, tailnet). Operator report: audio heard back from both clients.
+Bot log excerpt (RTP packets received/sent, 20 ms Opus frames = ~50 pps each way):
+
+Conversations (sid V6Zu...): session-initiate 16:46:07.3, session-accept 16:46:12.4, ICE connected 16:46:13.4,
+  rtp 191/187 @5s, 442/438 @10s, 692/688 @15s, 942/937 @20s; final 1064/1059.
+Dino (sid 1c0b...): session-initiate 16:46:40.8, session-accept 16:46:45.9, connected 16:46:46.3,
+  rtp 230/225 @5s, 480/476 @10s; final 551/547.
+
+Finding: 5.1 s from session-initiate to session-accept in both. Cause: aiortc setLocalDescription waits ~5 s
+for the STUN server (no answer from fw). Measured: no ICE servers 0.0 s, STUN 5.0 s, TURN only 0.11 s.
+Fix: parse_services() now keeps TURN only.

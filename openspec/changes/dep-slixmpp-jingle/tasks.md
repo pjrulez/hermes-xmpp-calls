@@ -8,5 +8,5 @@
 - [x] T6 Jingle to SDP and back, fixture-driven tests.
 - [x] T7 XEP-0215 fetch, expiry refresh, fallback behavior.
 - [ ] T8 XEP-0115 caps publication toggled by flag.
-- [ ] T9 Echo-bot signaling to `active` with Conversations. Operator. Evidence: `RESEARCH/evidence/echo-signaling.txt`.
+- [x] T9 Echo-bot signaling to `active` with Conversations. Operator. Evidence: `RESEARCH/evidence/echo-signaling.txt`.
 - [ ] T10 Document upstream-ability: public API, license, minimal diff list.

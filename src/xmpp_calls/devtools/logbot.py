@@ -56,8 +56,6 @@ class LogBot(slixmpp.ClientXMPP):
         self.roster.auto_subscribe = False
         for plugin in ("xep_0030", "xep_0115"):
             self.register_plugin(plugin)
-        for feature in CALL_FEATURES:
-            self["xep_0030"].add_feature(feature)
         self.add_event_handler("session_start", self.on_start)
         self.add_event_handler("presence_subscribe", self.on_subscribe)
         self.add_filter("in", self.record_in)
@@ -93,6 +91,11 @@ class LogBot(slixmpp.ClientXMPP):
         return stanza
 
     async def on_start(self, _event: object) -> None:
+        # Features must be added after bind: slixmpp keys them by the current JID, and a bare
+        # JID registered before bind means disco#info to our full JID shows no call features.
+        for feature in CALL_FEATURES:
+            self.plugin["xep_0030"].add_feature(feature)
+        await self.plugin["xep_0115"].update_caps()
         await self.get_roster()
         self.send_presence()
         logging.info("online as %s", self.boundjid.bare)
@@ -142,7 +145,7 @@ class LogBot(slixmpp.ClientXMPP):
         if action == "session-initiate":
             await asyncio.sleep(1)
             term = ET.Element(f"{{{JINGLE}}}jingle", action="session-terminate", sid=sid)
-            ET.SubElement(ET.SubElement(term, "reason"), "decline")
+            ET.SubElement(ET.SubElement(term, f"{{{JINGLE}}}reason"), f"{{{JINGLE}}}decline")
             self.make_iq_set(sub=term, ito=iq["from"]).send()
 
 

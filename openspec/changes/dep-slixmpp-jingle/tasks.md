@@ -6,7 +6,7 @@
 - [~] T4 Wire model + round-trip tests done as plain ElementTree (`src/xmpp_calls/jingle/wire.py`); slixmpp plugin registration pending.
 - [x] T5 Session state machine with illegal-transition tests.
 - [x] T6 Jingle to SDP and back, fixture-driven tests.
-- [ ] T7 XEP-0215 fetch, expiry refresh, fallback behavior.
+- [x] T7 XEP-0215 fetch, expiry refresh, fallback behavior.
 - [ ] T8 XEP-0115 caps publication toggled by flag.
 - [ ] T9 Echo-bot signaling to `active` with Conversations. Operator. Evidence: `RESEARCH/evidence/echo-signaling.txt`.
 - [ ] T10 Document upstream-ability: public API, license, minimal diff list.

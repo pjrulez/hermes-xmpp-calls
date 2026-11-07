@@ -31,7 +31,10 @@ CALL_FEATURES = [
 ]
 SCRATCH = Path(".scratch")
 REDACT = [
-    (re.compile(r'(pwd|ufrag|ip|address|rel-addr|id-hash)="[^"]*"'), r'\1="X"'),
+    (
+        re.compile(r'(pwd|ufrag|ip|address|rel-addr|id-hash|username|password|credential)="[^"]*"'),
+        r'\1="X"',
+    ),
     (re.compile(r"(<fingerprint[^>]*>)[^<]*(</fingerprint>)"), r"\1X\2"),
 ]
 

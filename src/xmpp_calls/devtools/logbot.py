@@ -76,12 +76,20 @@ class LogBot(slixmpp.ClientXMPP):
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%f")
         (self.outdir / f"{stamp}-{direction}-{tag}.xml").write_text(redact(xml) + "\n")
 
+    def wire(self, direction: str, xml: str) -> None:
+        """Append every stanza (redacted, one line) to wire.log to see what a client did."""
+        stamp = datetime.now(UTC).strftime("%H:%M:%S.%f")
+        with (self.outdir / "wire.log").open("a") as log:
+            log.write(f"{stamp} {direction} {redact(xml)[:700]}\n")
+
     def record_in(self, stanza: StanzaBase) -> StanzaBase:
         self.record("in", str(stanza))
+        self.wire("in", str(stanza))
         return stanza
 
     def record_out(self, stanza: StanzaBase) -> StanzaBase:
         self.record("out", str(stanza))
+        self.wire("out", str(stanza))
         return stanza
 
     async def on_start(self, _event: object) -> None:

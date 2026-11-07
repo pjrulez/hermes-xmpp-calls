@@ -201,6 +201,7 @@ def _build_candidate(candidate: Candidate) -> ET.Element:
         type=candidate.type,
         generation=str(candidate.generation),
         id=candidate.id,
+        network="0",  # Dino sends it and Conversations may read it; the value is not used
     )
     if candidate.rel_addr is not None:
         element.set("rel-addr", candidate.rel_addr)

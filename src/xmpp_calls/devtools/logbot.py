@@ -60,9 +60,11 @@ class LogBot(slixmpp.ClientXMPP):
             self["xep_0030"].add_feature(feature)
         self.add_event_handler("session_start", self.on_start)
         self.add_event_handler("presence_subscribe", self.on_subscribe)
-        self.add_event_handler("message", self.on_message)
         self.add_filter("in", self.record_in)
         self.add_filter("out", self.record_out)
+        for verb in ("propose", "retract", "proceed", "accept", "reject", "finish"):
+            path = f"{{{self.default_ns}}}message/{{{JMI}}}{verb}"
+            self.register_handler(CoroutineCallback(f"jmi-{verb}", MatchXPath(path), self.on_jmi))
         path = f"{{{self.default_ns}}}iq/{{{JINGLE}}}jingle"
         self.register_handler(CoroutineCallback("jingle", MatchXPath(path), self.on_jingle))
 
@@ -94,17 +96,19 @@ class LogBot(slixmpp.ClientXMPP):
         self.send_presence(pto=peer, ptype="subscribed")
         self.send_presence(pto=peer, ptype="subscribe")
 
-    async def on_message(self, msg: slixmpp.Message) -> None:
-        logging.info("message from %s: %s", msg["from"], [child.tag for child in msg.xml])
-        for child in msg.xml:
-            if child.tag == f"{{{JMI}}}propose":
-                if msg["from"].bare != self.allowed:
-                    return
-                logging.info("propose from %s", msg["from"])
-                await self.log_features(msg["from"])
-                reply = self.make_message(mto=msg["from"], mtype="chat")
-                reply.xml.append(ET.Element(f"{{{JMI}}}proceed", id=child.get("id", "")))
-                reply.send()
+    async def on_jmi(self, stanza: StanzaBase) -> None:
+        msg = cast(slixmpp.Message, stanza)
+        child = next((c for c in msg.xml if c.tag.startswith(f"{{{JMI}}}")), None)
+        if child is None:
+            return
+        verb = child.tag.rsplit("}", 1)[1]
+        logging.info("jmi %s from %s", verb, msg["from"])
+        if verb != "propose" or msg["from"].bare != self.allowed:
+            return
+        await self.log_features(msg["from"])
+        reply = self.make_message(mto=msg["from"], mtype="chat")
+        reply.xml.append(ET.Element(f"{{{JMI}}}proceed", id=child.get("id", "")))
+        reply.send()
 
     async def log_features(self, jid: slixmpp.JID) -> None:
         """Record the caller's advertised disco features (the call button logic)."""

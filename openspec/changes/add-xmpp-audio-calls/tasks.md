@@ -4,7 +4,7 @@ Evidence names the file that must exist before the box is ticked. "Operator" = n
 
 - [x] R1 aiortc, av, aioice, slixmpp import and loopback on fw Python 3.14.9. Evidence: `RESEARCH/evidence/loopback-result.txt`.
 - [x] R2 Inventory slixmpp Jingle support. Evidence: `RESEARCH/00-summary.md` finding 4.
-- [ ] R3 Capture real calls from Dino, Conversations and Monal (logger bot, redacted `propose`, `session-initiate`, caps, termination). Operator. Evidence: `RESEARCH/evidence/conversations-session-initiate.xml`. (`dep-slixmpp-jingle` T1)
+- [ ] R3 (Conversations done, Dino pending, Monal later) Capture real calls from Dino, Conversations and Monal (logger bot, redacted `propose`, `session-initiate`, caps, termination). Operator. Evidence: `RESEARCH/evidence/conversations-session-initiate.xml`. (`dep-slixmpp-jingle` T1)
 - [x] R4 Review prior art, license terms, reuse decision, choose approach A/B/C/D. Evidence: `RESEARCH/05-approach-decision.md`. (`dep-slixmpp-jingle` T2)
 - [ ] R5 slixmpp 1.15.0 vs 1.17.0 add-on compatibility. Evidence: `RESEARCH/evidence/slixmpp-compat.txt`. (`dep-slixmpp-jingle` T3)
 - [ ] R6 Endpointing comparison on recorded speech. Evidence: `RESEARCH/evidence/endpointing.txt`. (`dep-aiortc-media` T4)

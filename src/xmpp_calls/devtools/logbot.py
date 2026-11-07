@@ -106,9 +106,11 @@ class LogBot(slixmpp.ClientXMPP):
         if verb != "propose" or msg["from"].bare != self.allowed:
             return
         await self.log_features(msg["from"])
-        reply = self.make_message(mto=msg["from"], mtype="chat")
-        reply.xml.append(ET.Element(f"{{{JMI}}}proceed", id=child.get("id", "")))
-        reply.send()
+        # XEP-0353: accept to ourselves stops other devices ringing; proceed is for the caller.
+        for target, tag in ((self.boundjid.bare, "accept"), (msg["from"], "proceed")):
+            reply = self.make_message(mto=target, mtype="chat")
+            reply.xml.append(ET.Element(f"{{{JMI}}}{tag}", id=child.get("id", "")))
+            reply.send()
 
     async def log_features(self, jid: slixmpp.JID) -> None:
         """Record the caller's advertised disco features (the call button logic)."""

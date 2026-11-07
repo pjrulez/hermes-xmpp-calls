@@ -13,7 +13,22 @@ Redacted by `xmpp_calls.devtools.logbot` (ufrag, pwd, fingerprint text, IPs repl
 - Candidates arrive afterwards as separate `transport-info` stanzas (trickle; first seen: `type=relay udp`, so Conversations relays through TURN even on the tailnet).
 - We must reply to each `iq set` with a result; the logbot declines with `session-terminate` reason `decline`.
 
-## Dino (partial)
-- Disco features include the same call set plus `transports:raw-udp:1` and `muji:0`. Call button works.
-- `propose` identical in shape. The logbot sent `proceed`, but Dino did not send `session-initiate` within 6 s and the operator hung up (`retract`).
-- Hypothesis to test: Dino also needs `accept` to the bot's own bare JID before `proceed` (what Conversations did when it was the callee). Logbot now sends both.
+## Dino (complete, after the bot advertised call features correctly)
+- Disco features: same call set plus `transports:raw-udp:1` and `muji:0`.
+- `session-initiate` arrives ~0.8 s after our `accept` + `proceed` (see `dino-session-initiate.xml`):
+  - `initiator` attribute set; one content `name="audio" senders="both" creator="initiator"`; no BUNDLE group.
+  - Payload types: Opus 111 (48000/2, `useinbandfec=1`), speex 112/113/114, PCMU 0, PCMA 8; `rtcp-mux`.
+  - **Both** SDES `<encryption><crypto .../></encryption>` (legacy) and a DTLS `fingerprint` (`setup=actpass`). We use DTLS only and must ignore `<encryption>`.
+  - Inline host candidates for components 1 **and 2** (ignore component 2 with rtcp-mux), then `transport-info` with relay candidates (TURN works for Dino too).
+- The earlier non-response was our fault: the bot advertised no call features on its full JID.
+
+## Differences to handle
+| | Conversations | Dino |
+|---|---|---|
+| content name | `0` + `group BUNDLE` | `audio`, no group |
+| candidates | trickled in `transport-info` only | host candidates inline, relay trickled |
+| payloads | opus 111, red 63, telephone-event 110, hdrext 1-4 | opus 111, speex, PCMU/PCMA, SDES |
+| component | 1 | 1 and 2 |
+| initiate attribute | none | `initiator` |
+
+Both set `setup=actpass` and `sha-256` fingerprints; both offer trickle ICE support (Conversations advertises `trickle` and `renomination`; Dino sends relay candidates trickled).

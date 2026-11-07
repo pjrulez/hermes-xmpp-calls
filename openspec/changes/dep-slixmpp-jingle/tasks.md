@@ -1,6 +1,6 @@
 ## 1. Tasks
 
-- [ ] T1 Capture real Conversations stanzas (R3). Operator. Evidence: `RESEARCH/evidence/conversations-session-initiate.xml`.
+- [x] T1 Capture real Dino and Conversations stanzas (R3), Monal later. Operator. Evidence: `RESEARCH/evidence/conversations-session-initiate.xml`.
 - [x] T2 Prior art and license review, approach decision (R4). Evidence: `RESEARCH/05-approach-decision.md`.
 - [ ] T3 slixmpp 1.15.0 vs 1.17.0 compatibility probe (R5). Evidence: `RESEARCH/evidence/slixmpp-compat.txt`.
 - [ ] T4 Stanza classes and plugin registration with round-trip tests.

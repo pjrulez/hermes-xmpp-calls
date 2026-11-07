@@ -13,6 +13,8 @@ Voice notes work end to end. The operator wants live calls: call the agent from 
 
 ## What changes
 
+Primary use cases: (1) the operator calls the agent; (2) **the agent calls the operator** when a scheduled (cron) job has a warranted reason, for example an alert or a decision that needs a human. Both use the same engine; outgoing adds a call-initiation tool and a ring timeout.
+
 One umbrella delivers the whole feature inside the plugin fork:
 1. A Jingle RTP signaling stack (XEP-0166/0167/0176/0320/0215 plus 0353 JMI) as slixmpp add-ons: `dep-slixmpp-jingle`.
 2. A media engine on aiortc, on its own event loop thread, with resampling, pacing and clean teardown: `dep-aiortc-media`.
@@ -22,7 +24,7 @@ One umbrella delivers the whole feature inside the plugin fork:
 
 ## Non-goals (first release)
 
-Video, group or MUC calls, outgoing calls (agent calls the user), OMEMO fingerprint shield, public-Internet Prosody deployments, rollout to mad and django, upstream publication before a tested version exists, any change to `stt` or `tts` provider configuration, replacing voice notes.
+Video, group or MUC calls, OMEMO fingerprint shield, public-Internet Prosody deployments, rollout to mad and django, upstream publication before a tested version exists, any change to `stt` or `tts` provider configuration, replacing voice notes.
 
 ## Dependencies and gates
 

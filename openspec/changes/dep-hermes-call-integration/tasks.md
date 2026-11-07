@@ -8,4 +8,5 @@
 - [ ] T6 Barge-in note and heard-fraction estimate.
 - [ ] T7 Hangup marker and spoken error messages.
 - [ ] T8 `plugin.yaml` dependency and config declarations; clean-install test.
+- [ ] T8b Agent tool to place a call with an opening, usable from cron jobs; documented limits (one call, ring timeout, allowed JIDs only).
 - [ ] T9 End-to-end fw trial with a bot JID, then production account. Operator.

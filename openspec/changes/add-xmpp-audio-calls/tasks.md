@@ -21,6 +21,7 @@ Evidence names the file that must exist before the box is ticked. "Operator" = n
 - [ ] B4 Endpointing and transcript into a session (text reply logged). (`dep-hermes-call-integration`)
 - [ ] B5 Sentence-streamed speech in the agent voice. (`dep-hermes-call-integration`)
 - [ ] B6 Barge-in and heard-fraction note. (`dep-hermes-call-integration`)
+- [ ] B6b Outgoing calls: JMI initiation, ring timeout, opening synthesized during ringing, agent tool and cron use. Operator. (`dep-hermes-call-integration`)
 - [ ] B7 Plugin integration behind `xmpp.calls.enabled`, authorization, limits, failure isolation, `plugin.yaml` dependencies. (all)
 - [ ] B8 Layer-boundary and leak tests (50-call loop). (`dep-aiortc-media`)
 - [ ] B9 fw trial with the production account after review. Operator.

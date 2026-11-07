@@ -54,3 +54,14 @@ The agent SHALL be able to end the call with a reply marker, and SHALL speak a s
 #### Scenario: TTS failure
 - **WHEN** TTS fails for a sentence
 - **THEN** the failure is logged, the turn text is posted to chat, and the call stays up
+
+### Requirement: Agent-initiated call opening
+For an outgoing call the agent SHALL provide the opening words when it requests the call, the engine SHALL synthesize them while the phone rings and play them as soon as the call connects, and the conversation SHALL then continue as for an incoming call with the opening recorded in the session.
+
+#### Scenario: Cron alert
+- **WHEN** a cron job requests a call with an opening
+- **THEN** the opening plays immediately on answer without a synthesis gap
+
+#### Scenario: Declined or unanswered
+- **WHEN** the call is not answered
+- **THEN** the session records no spoken opening

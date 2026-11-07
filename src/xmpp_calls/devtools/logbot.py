@@ -95,6 +95,7 @@ class LogBot(slixmpp.ClientXMPP):
         self.send_presence(pto=peer, ptype="subscribe")
 
     async def on_message(self, msg: slixmpp.Message) -> None:
+        logging.info("message from %s: %s", msg["from"], [child.tag for child in msg.xml])
         for child in msg.xml:
             if child.tag == f"{{{JMI}}}propose":
                 if msg["from"].bare != self.allowed:

@@ -57,3 +57,22 @@ The plugin SHALL keep the existing allowed-peer subscription handling so that an
 #### Scenario: Allowed peer
 - **WHEN** an allowed JID subscribes
 - **THEN** the plugin accepts and subscribes back; others are ignored
+
+### Requirement: Outgoing calls
+The plugin SHALL be able to place a one-to-one audio call to an allowed JID on request of the agent or a scheduled job, using XEP-0353 `propose` to the bare JID, handling `accept`, `proceed`, `reject` and `retract`, then sending `session-initiate` to the responding full JID, and SHALL stop ringing after a configurable timeout.
+
+#### Scenario: Answered
+- **WHEN** the user answers on one device
+- **THEN** the plugin sends `session-initiate` to that device and the call connects
+
+#### Scenario: Unanswered
+- **WHEN** nobody answers within the ring timeout
+- **THEN** the plugin sends `retract`, reports "not answered" to the requester, and leaves no state
+
+#### Scenario: Multiple devices
+- **WHEN** several devices ring and one answers
+- **THEN** the others stop ringing
+
+#### Scenario: Not allowed
+- **WHEN** a call is requested to a JID that is not allowed
+- **THEN** the plugin refuses without sending any stanza

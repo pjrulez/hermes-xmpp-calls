@@ -7,12 +7,12 @@ The README SHALL list each Prosody requirement for Conversations calls with the 
 - **WHEN** an operator reads the README
 - **THEN** each row can be reproduced with the stated command
 
-### Requirement: TURN readiness
-The project SHALL verify that Prosody returns TURN credentials and that a client outside the server host can allocate a relay.
+### Requirement: TURN credentials for the bot
+The project SHALL verify that the test bot can fetch XEP-0215 credentials from Prosody.
 
-#### Scenario: External allocation
-- **WHEN** the check runs from fw
-- **THEN** it records the allocation result and relay candidate type without secrets
+#### Scenario: Credential fetch
+- **WHEN** the bot requests external services
+- **THEN** it records the service types and counts without secrets
 
 ### Requirement: No hidden server changes
 The project SHALL NOT change the Prosody deployment itself; fixes SHALL be proposed as changes in the Prosody repository.

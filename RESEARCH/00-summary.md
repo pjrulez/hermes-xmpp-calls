@@ -21,7 +21,7 @@ Status key: V = verified here with evidence, S = verified from source or docs on
 | 11 | Hermes 0.22.5 has no server-side WebRTC peer. Dashboard audio routes exist: `transcribe`, `speak`, `speak-stream` (sentence chunked, barge-in `stop`), `transcribe-stream` | S | `03-hermes-integration.md` |
 | 12 | Conduit realtime calls for Hermes use OpenAI GPT-Live over WebRTC through the dashboard SDP relay; its Standard call is turn-based and uses the dashboard `transcribe` and `speak` routes | S | `04-conduit.md` |
 | 13 | aiortc against Conversations Android | U | needs device test |
-| 18 | `prosodyctl check turn` inside the Prosody container: "No STUN response: No route to host" for `turn.example.org:3478`. May be container-network hairpin only; needs an external test | V (symptom), U (cause) | live probe 2026-11-06 |
+| 18 | `prosodyctl check turn` inside the Prosody container: "No STUN response: No route to host". Human Dino/Conversations/Monal calls work on the tailnet, so treated as a check quirk, not a blocker | V (symptom) | live probe 2026-11-06, operator report |
 | 14 | Python 3.11 wheels for aiortc and av on the cloud VMs (arm64). Project target is Python 3.14; Hermes VM venvs are 3.11 but a 3.14.7 tools python exists there | U | |
 | 15 | slixmpp 1.15.0 (pinned by the plugin) vs 1.17.0 | U | |
 | 16 | Reuse terms of `xmpp-radio-tower` code (license not found) | U | |

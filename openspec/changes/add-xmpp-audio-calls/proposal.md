@@ -9,7 +9,7 @@ Voice notes work end to end. The operator wants live calls: call the agent from 
 - aiortc 1.16.0 with av 19.0.2 and aioice 0.13.0 loops back with DTLS-SRTP and Opus on Python 3.14.9 (findings 1, 2).
 - Prior art with the same stack reports Conversations calls working: `xmpp-radio-tower`; and a Hermes call pipeline exists for Delta Chat (findings 7, 8).
 - Local audio is fast (TTS about 0.6 s per two sentences, STT 0.4 s per 7 s); the agent turn dominates latency (finding 10).
-- Prosody on mad has `turn_external`, carbons, csi, cloud_notify, and a coturn container, but `prosodyctl check turn` fails from the container (finding 18).
+- Prosody on mad has `turn_external`, carbons, csi, cloud_notify and coturn; human audio and video calls work on the tailnet with Dino, Conversations and Monal. `prosodyctl check turn` fails from inside the container but is treated as a check quirk (finding 18).
 
 ## What changes
 
@@ -22,12 +22,12 @@ One umbrella delivers the whole feature inside the plugin fork:
 
 ## Non-goals (first release)
 
-Video, group or MUC calls, outgoing calls (agent calls the user), OMEMO fingerprint shield, rollout to mad and django, upstream publication, any change to `stt` or `tts` provider configuration, replacing voice notes.
+Video, group or MUC calls, outgoing calls (agent calls the user), OMEMO fingerprint shield, public-Internet Prosody deployments, rollout to mad and django, upstream publication before a tested version exists, any change to `stt` or `tts` provider configuration, replacing voice notes.
 
 ## Dependencies and gates
 
 - Each dependency change has its own gate list; the umbrella build phase starts after R3, R4 and P2 produce evidence.
-- Every media milestone needs an operator-run Conversations Android test.
+- Every media milestone needs an operator-run test with Dino, Conversations or Monal.
 - Prototypes use a dedicated bot JID. Production gateway account stays untouched until the engine is behind a default-off flag and reviewed.
 
 ## Acceptance

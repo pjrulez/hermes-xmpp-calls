@@ -4,12 +4,15 @@ Live audio calls with a Hermes Agent over XMPP, answered from Conversations (And
 Call `hermes-<host>-default@xmpp.example.org`, talk, hear streamed answers, interrupt.
 Audio stays on our own stack: Whisper (STT) and PocketTTS (TTS) on `fw` through `fw-audio-control`.
 
-Status: **research round 1 done, specification drafted, no implementation yet.**
+Scope: a private Prosody on the tailnet. Public Internet deployment is out of scope. Test clients: Dino (Linux), Conversations (Android), Monal (iOS).
+
+Status: **research done, specification drafted, implementation starting.**
 
 ## Layout
 - `RESEARCH/` verified findings, open questions, dependency options, evidence scripts.
 - `openspec/changes/` one umbrella change (`add-xmpp-audio-calls`) plus one change per dependency.
 - `src/xmpp_calls/` development tree for the call engine (moves into the plugin fork).
+- `plugin/` git-ignored working clone of the fork (`feat/xmpp-calls`); `.scratch/` git-ignored disposable files.
 - `AGENTS.md` working rules.
 
 ## Development
@@ -27,20 +30,16 @@ Hooks run ruff check, ruff format --check and pyrefly on every commit.
 3. `openspec/changes/add-xmpp-audio-calls/tasks.md` research and build breakdown.
 
 ## Prosody server requirements
-Full compatibility with Conversations calls needs the following on the server. Status is for `xmpp.example.org` on mad (Prosody 13.0 nightly 98), from `DEPLOYMENTS/mad-prosody/prosody.cfg.lua.template` and a live probe on 2026-11-06.
+Server features that Jingle audio and video calls rely on, as set up on the tailnet Prosody (`xmpp.example.org`, Prosody 13.0 nightly). Calls between human users already work there with Dino, Conversations and Monal, so these are proven by use. Public-Internet exposure is out of scope.
 
-| Requirement | Why | Status |
+| Requirement | Why | State |
 |---|---|---|
-| `mod_turn_external` (XEP-0215) with `turn_external_host/port/secret/ttl` | Clients and the bot fetch short-lived TURN/STUN credentials; mobile networks usually need relay | enabled; host `turn.example.org:3478`, tcp on, ttl 3600 |
-| coturn reachable by clients on UDP and TCP 3478 plus its relay port range | Media relays through it | container `prosody-coturn` runs. **`prosodyctl check turn` from the Prosody container failed: "No STUN response: No route to host".** Needs an external reachability test (task P2) |
-| `mod_disco` and entity capabilities passthrough | Clients detect call support from caps | enabled |
-| `mod_roster` and mutual presence subscription between caller and bot | Conversations shows the call button only for mutual contacts | enabled; plugin approves subscriptions only for allowed peers and subscribes back |
-| `mod_carbons` | Call proposals reach all of the caller's devices and are cleared when answered elsewhere | enabled |
-| `mod_smacks`, `mod_csi_simple`, `mod_cloud_notify` | Reliable delivery and wake-up of sleeping mobile clients for call ringing | enabled |
-| `mod_mam`, `mod_pep` | Message archive, OMEMO device lists | enabled |
-| Valid TLS certificate on C2S (5222) | Client trust | enabled |
-| Bot accounts, one per agent | Each agent is its own JID | `hermes-fw-default`, `hermes-mad-default`, `hermes-django-default` exist |
-| No Jingle-specific server module | Jingle is carried end to end as ordinary IQ/message stanzas | n/a |
-| Not needed | Federation (s2s is off), MUC for 1:1 calls | n/a |
+| `mod_turn_external` (XEP-0215) with a coturn server | Clients fetch short-lived STUN/TURN credentials for ICE | enabled (`turn.example.org:3478`, tcp on, ttl 3600) |
+| `mod_disco` and entity capabilities | Clients detect call support from caps | enabled |
+| `mod_roster` plus mutual presence subscription between caller and bot | Conversations shows the call button only for mutual contacts | enabled; the plugin accepts subscriptions only from allowed peers and subscribes back |
+| `mod_carbons` | Call proposals reach all of the caller's devices | enabled |
+| `mod_smacks`, `mod_csi_simple`, `mod_cloud_notify` | Reliable delivery and wake-up of mobile clients | enabled |
+| One account per agent | Each agent is its own JID | `hermes-fw-default`, `hermes-mad-default`, `hermes-django-default` |
+| No Jingle-specific server module | Jingle is carried end to end as ordinary stanzas | n/a |
 
-The check that decides TURN health is `prosodyctl check turn`; keep the credential rotation and relay range documented next to the coturn deployment, not here.
+Note: `prosodyctl check turn` run inside the Prosody container reports "No STUN response: No route to host". Human calls work, so this is treated as a container-network quirk of the check, not a blocker. It is only revisited if a bot call fails to connect.

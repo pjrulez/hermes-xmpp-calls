@@ -4,3 +4,5 @@ __pycache__/
 *.wav
 *.ogg
 *.log
+.scratch/
+plugin/

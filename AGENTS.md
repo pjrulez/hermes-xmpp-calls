@@ -15,6 +15,7 @@ Baseline: `~/AGENTS.md` (sandbox, no secrets, no destructive system actions). Th
 
 ## Testing
 - Run tests and live bots in the classic herdr session `hermes-xmpp-calls` (not herdr-app). Drive it with `herdr --session hermes-xmpp-calls workspace|tab|pane ...` (for example `pane run <pane> '<cmd>'`, `pane read <pane>`), so the operator can watch with `herdr session attach hermes-xmpp-calls`.
+- Python XMPP clients in the herdr panes need `SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt` (the Prosody certificate chain is in the system bundle, not in uv's Python).
 - Need `sudo`? Stop and ask the operator. They review, approve, and type the password themselves.
 - Operator test clients: Dino (Linux), Conversations (Android), Monal (iOS). Audio and video calls already work between users on this Prosody. Never claim a device test passed; ask for it and record the result.
 

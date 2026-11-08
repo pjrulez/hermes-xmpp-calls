@@ -346,3 +346,23 @@ async def test_call_title_includes_the_topic() -> None:
     await asyncio.sleep(0.1)
     assert ctl.host.titles[0].endswith(" daily-note")  # type: ignore[attr-defined]
     await phone.close()
+
+
+async def test_call_with_talk_ends_with_a_text_recap() -> None:
+    ctl, _, _, phone, _ = await _run_outgoing()
+    sid = next(iter(ctl.calls))
+    ctl.calls[sid].convo.turns = 2  # the person said something and the agent answered
+    await ctl.end(sid, "success", notify=True)
+    await asyncio.sleep(0.2)
+    recaps = [t for _, t in ctl.host.texts if t.startswith("Call recap:")]  # type: ignore[attr-defined]
+    assert len(recaps) == 1
+    await phone.close()
+
+
+async def test_call_without_talk_has_no_recap() -> None:
+    ctl, _, _, phone, _ = await _run_outgoing()
+    sid = next(iter(ctl.calls))
+    await ctl.end(sid, "success", notify=True)
+    await asyncio.sleep(0.2)
+    assert ctl.host.texts == []  # type: ignore[attr-defined]
+    await phone.close()

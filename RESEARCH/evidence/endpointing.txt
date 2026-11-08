@@ -23,3 +23,5 @@ speech+white(400): webrtc2=0.85  webrtc3=0.74  pre2=0.84  pre3=0.57
 speech+hum(800): webrtc2=1.00  webrtc3=0.74  pre2=0.74  pre3=0.39
 speech+fan(800): webrtc2=0.99  webrtc3=0.53  pre2=0.41  pre3=0.15
 speech+babble(500): webrtc2=0.63  webrtc3=0.61  pre2=0.62  pre3=0.59
+
+First run, old energy gate (rms>250) in noise alone: white 300/800/1500 = 1.00/1.00/1.00; hum = 1.00; fan 300/800/1500 = 0.78/1.00/1.00; babble = 0.26-0.41. Speech+noise mixes were 1.00 for every steady noise, i.e. no silence was ever seen.

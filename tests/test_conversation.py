@@ -266,3 +266,50 @@ async def test_failed_speech_falls_back_to_text() -> None:
     convo.attach(Caller([("talk", 800), ("quiet", 1000)]))
     await settle(convo)
     assert posted == ["This reply cannot be spoken, sadly."]
+
+
+async def test_protected_speech_ignores_the_caller_until_finished() -> None:
+    """A briefing is delivered whole: no barge-in, no turn, no beep, whatever the caller says."""
+    replies: list[str] = []
+
+    class Short(FakeSpeech):
+        async def synthesize(self, text: str) -> np.ndarray:
+            return np.ones(OUT_RATE // 5, np.int16)
+
+    async def respond(text: str) -> str:
+        replies.append(text)
+        return "Should not happen."
+
+    async def hangup() -> None: ...
+
+    convo = Conversation(Short(), respond, hangup, endpointer=energy_endpointer())
+    convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
+    briefing = asyncio.create_task(
+        convo.say(
+            "Today the top options were A and B. The note published today is about A.",
+            protected=True,
+        )
+    )
+    await settle(convo)  # the caller talked and fell silent while the briefing was still queued
+    assert replies == []
+    assert convo._protected
+    assert convo.playback.busy  # not flushed by a barge-in
+    while convo.playback.busy:  # play it out
+        await convo.playback.recv()
+    await briefing
+    assert not convo._protected
+    assert replies == []
+
+
+async def test_unprotected_say_can_be_interrupted() -> None:
+    convo = Conversation(
+        FakeSpeech(),
+        lambda _t: asyncio.sleep(0, "x"),
+        lambda: asyncio.sleep(0),
+        endpointer=energy_endpointer(),
+    )
+    await convo.say("Hello there my friend, how are you doing today?")
+    assert convo.playback.busy
+    convo.attach(Caller([("talk", 800), ("quiet", 100)]))
+    await convo._listener  # type: ignore[misc]
+    assert not convo.playback.busy or convo._ack is not None

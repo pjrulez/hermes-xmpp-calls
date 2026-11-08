@@ -43,12 +43,25 @@ class CallBot(LogBot):
         await self.controller.advertise()
 
     async def on_chat(self, msg: Any) -> None:
-        """Dev trigger for outgoing calls: the allowed user types "call me"."""
-        if msg["from"].bare == self.allowed and msg["body"].strip().lower() == "call me":
-            status = await self.controller.place_call(
-                self.allowed, "Hello. This is the test bot calling you, as you asked."
+        """Dev triggers: "call me" (greeting) and "brief me" (uninterruptible briefing)."""
+        if msg["from"].bare != self.allowed:
+            return
+        text = msg["body"].strip().lower()
+        if text == "call me":
+            opening = "Hello. This is the test bot calling you, as you asked."
+            status = await self.controller.place_call(self.allowed, opening)
+        elif text == "brief me":
+            briefing = (
+                "Good morning. Here is your test briefing. Today there were three top options: "
+                "the first was about calls, the second about noise, and the third about cron. "
+                "I chose the first one because it unlocks the others. "
+                "Today's note reads: calls now ring you, and nothing interrupts a briefing. "
+                "That is the end of the briefing. You can ask me a question now."
             )
-            msg.reply(status).send()
+            status = await self.controller.place_call(self.allowed, briefing, uninterruptible=True)
+        else:
+            return
+        msg.reply(status).send()
 
     # The controller owns call signaling; the logger's own call handlers step aside.
     async def on_jmi(self, stanza: Any) -> None: ...

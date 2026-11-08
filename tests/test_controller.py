@@ -194,11 +194,14 @@ async def test_close_hangs_up_open_calls() -> None:
     await asyncio.sleep(0)
 
 
-async def test_outgoing_call_rings_offers_and_speaks_the_opening() -> None:
+async def _run_outgoing(**options: Any) -> tuple[CallController, FakeClient, str, Any, list[str]]:
+    """Place a call, have an aiortc-backed 'phone' answer it, return once connected."""
     ctl, client = make()
     spoken: list[str] = []
     ctl.host.speech.synthesize = lambda text: _record(spoken, text)  # type: ignore[method-assign]
-    task = asyncio.create_task(ctl.place_call("owner@example.org", "Your backup finished."))
+    task = asyncio.create_task(
+        ctl.place_call("owner@example.org", "Your backup finished.", **options)
+    )
     await asyncio.sleep(0.05)
     (propose_msg,) = [s for s in client.sent if s.kind == "message"]
     proposal = str(propose_msg.xml[0].get("id"))
@@ -216,21 +219,54 @@ async def test_outgoing_call_rings_offers_and_speaks_the_opening() -> None:
     assert initiate.initiator == "bot@example.org/res"
     assert client.sent[-1].to == PEER
 
-    # The phone side: an aiortc-backed CallMedia answers our offer.
     from xmpp_calls.media import CallMedia
 
     phone = CallMedia([])
-    accept = Jingle(
-        "session-accept", proposal, contents=(await phone.answer(initiate),), group=initiate.group
-    )
+    answer = await phone.answer(initiate)
+    accept = Jingle("session-accept", proposal, contents=(answer,), group=initiate.group)
     await ctl.handle(PEER, accept)
     for candidate in initiate.contents[0].transport.candidates:  # type: ignore[union-attr]
         await phone.add_candidate(candidate)
     result = await asyncio.wait_for(task, 20)
+    return ctl, client, result, phone, spoken
+
+
+async def test_outgoing_call_rings_offers_and_speaks_the_opening() -> None:
+    ctl, _, result, phone, spoken = await _run_outgoing()
+    sid = next(iter(ctl.calls))
     assert result.startswith("connected")
+    await asyncio.sleep(0.1)
     assert "Your backup finished." in spoken
-    assert "began by saying: Your backup finished." in ctl.calls[proposal].convo._note
+    assert "began by saying: Your backup finished." in ctl.calls[sid].convo._note
+    assert not ctl.calls[sid].convo._protected
     await ctl.close()
+    await phone.close()
+
+
+async def test_uninterruptible_opening_is_protected_while_it_plays() -> None:
+    ctl, _, _, phone, _ = await _run_outgoing(uninterruptible=True)
+    sid = next(iter(ctl.calls))
+    await asyncio.sleep(0.2)
+    assert ctl.calls[sid].convo._protected  # still playing: nothing drains the playback in tests
+    ctl.calls[sid].convo.playback.flush()
+    await asyncio.sleep(0.2)
+    assert not ctl.calls[sid].convo._protected
+    await ctl.close()
+    await phone.close()
+
+
+async def test_hang_up_after_ends_the_call_when_the_opening_is_done() -> None:
+    ctl, client, _, phone, _ = await _run_outgoing(hang_up_after=True)
+    sid = next(iter(ctl.calls))
+    await asyncio.sleep(0.2)
+    assert sid in ctl.calls  # still delivering
+    ctl.calls[sid].convo.playback.flush()
+    for _ in range(40):
+        if sid not in ctl.calls:
+            break
+        await asyncio.sleep(0.05)
+    assert sid not in ctl.calls
+    assert client.jingle_sent()[-1].action == "session-terminate"
     await phone.close()
 
 
@@ -272,4 +308,6 @@ def proceed(proposal: str, verb: str = "proceed") -> FakeStanza:
 
 async def _record(spoken: list[str], text: str) -> np.ndarray:
     spoken.append(text)
-    return np.zeros(4800, np.int16)
+    return np.zeros(
+        48000 * 3, np.int16
+    )  # 3 s: long enough that the sender cannot drain it mid-test

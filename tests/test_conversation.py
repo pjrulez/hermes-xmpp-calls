@@ -530,3 +530,24 @@ async def test_goodbye_waits_out_the_grace_time_before_hanging_up() -> None:
     assert ended == []  # inside the grace window
     await asyncio.sleep(0.6)
     assert ended == [True]
+
+
+async def test_calling_back_after_a_missed_call_tells_the_agent() -> None:
+    seen: list[str] = []
+
+    async def respond(text: str) -> str:
+        seen.append(text)
+        return "It was about the backup."
+
+    async def hangup() -> None:
+        pass
+
+    convo = Conversation(
+        FakeSpeech(), respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+    )
+    convo.remember_missed("Your backup finished.")
+    convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
+    await settle(convo)
+    assert seen
+    assert "did not answer" in seen[0]
+    assert "Your backup finished." in seen[0]

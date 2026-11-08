@@ -1,6 +1,7 @@
 """CallController with a fake slixmpp client and host, and a real aiortc caller."""
 
 import asyncio
+import re
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -70,10 +71,18 @@ class FakeHost:
     async def ask(self, peer: str, call_id: str, text: str) -> str:
         return "A fine reply that is spoken aloud."
 
-    async def post_text(self, peer: str, text: str) -> None: ...
+    def __init__(self) -> None:
+        self.texts: list[tuple[str, str]] = []
+        self.titles: list[str] = []
+
+    async def post_text(self, peer: str, text: str) -> None:
+        self.texts.append((peer, text))
 
     async def steer(self, peer: str, call_id: str, text: str) -> bool:
         return False
+
+    async def name_call(self, peer: str, call_id: str, title: str) -> None:
+        self.titles.append(title)
 
 
 class FakeStanza:
@@ -283,6 +292,10 @@ async def test_outgoing_call_not_answered_is_retracted() -> None:
     assert result.startswith("no answer")
     assert client.jmi_sent()[-1][1] == "retract"
     assert ctl._ringing == {}
+    ((peer, text),) = ctl.host.texts  # type: ignore[attr-defined]
+    assert peer == "owner@example.org"  # sent as text instead
+    assert "Hello" in text
+    assert ctl._missed == {"owner@example.org": "Hello"}  # and remembered for a call back
 
 
 async def test_outgoing_call_declined() -> None:
@@ -292,6 +305,7 @@ async def test_outgoing_call_declined() -> None:
     proposal = str(client.sent[0].xml[0].get("id"))
     await ctl._on_jmi(proceed(proposal, "reject"))
     assert (await task).startswith("declined")
+    assert "Hello" in ctl.host.texts[0][1]  # type: ignore[attr-defined]
 
 
 async def test_outgoing_call_to_stranger_is_refused() -> None:
@@ -317,3 +331,11 @@ async def _record(spoken: list[str], text: str) -> np.ndarray:
     return np.zeros(
         48000 * 3, np.int16
     )  # 3 s: long enough that the sender cannot drain it mid-test
+
+
+async def test_call_session_gets_a_recognizable_title() -> None:
+    ctl, _, _, phone, _ = await _run_outgoing()
+    await asyncio.sleep(0.1)
+    (title,) = ctl.host.titles  # type: ignore[attr-defined]
+    assert re.fullmatch(r"Call to owner \d{4}-\d\d-\d\d \d\d:\d\d", title)
+    await phone.close()

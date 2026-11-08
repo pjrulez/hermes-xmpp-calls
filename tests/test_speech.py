@@ -40,3 +40,13 @@ def test_long_first_sentence_is_split_at_a_clause() -> None:
     parts = sentences(text)
     assert parts[0] == "Well, since you asked about the weather this afternoon,"
     assert " ".join(parts) == text
+
+
+def test_stock_phrases_from_noise_are_phantoms_only_when_short() -> None:
+    from xmpp_calls.speech import is_phantom
+
+    assert is_phantom("Thank you.", 1.6)
+    assert is_phantom("Thanks for watching!", 2.0)
+    assert not is_phantom("Thank you.", 4.0)  # a long utterance is real speech
+    assert not is_phantom("Yes, thank you very much", 1.5)
+    assert not is_phantom("Okay.", 1.0)

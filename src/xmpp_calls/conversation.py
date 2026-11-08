@@ -3,16 +3,19 @@ with barge-in. Providers are injected, so the loop is testable without audio mod
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from typing import Protocol
 
 import numpy as np
 from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 
-from .audio import Downsampler, Endpointer, PlaybackTrack, SpeechHeld, Utterance
+from .audio import STT_RATE, Downsampler, Endpointer, PlaybackTrack, SpeechHeld, Utterance
 from .speech import sentences, split_hangup
 
 OOPS = "Sorry, something went wrong. Please say that again."
+FILLER = "One moment."
+GAP_S = 0.1  # no RTP for this long: the clock, not packets, advances endpointing
 
 
 class Speech(Protocol):
@@ -41,8 +44,11 @@ class Conversation:
         speech: Speech,
         respond: Callable[[str], Awaitable[str]],
         on_hangup: Callable[[], Awaitable[None]],
+        filler_after: float = 3.0,
     ) -> None:
         self.speech, self.respond, self.on_hangup = speech, respond, on_hangup
+        self.filler_after = filler_after  # seconds of waiting for the agent before "One moment."
+        self._filler_audio: np.ndarray | None = None
         self.playback = PlaybackTrack()
         self._task: asyncio.Task[None] | None = None  # the running turn
         self._listener: asyncio.Task[None] | None = None
@@ -65,15 +71,30 @@ class Conversation:
 
     async def _listen(self, track: MediaStreamTrack) -> None:
         down, endpointer = Downsampler(), Endpointer()
+        pending = asyncio.ensure_future(track.recv())
         try:
             while True:
-                for event in endpointer.feed(down.feed(await track.recv())):  # type: ignore[arg-type]
+                done, _ = await asyncio.wait({pending}, timeout=GAP_S)
+                if done:
+                    pcm = down.feed(pending.result())  # type: ignore[arg-type]
+                    pending = asyncio.ensure_future(track.recv())
+                else:
+                    # Clients stop sending RTP when muted; feed silence so utterances still end.
+                    pcm = np.zeros(int(STT_RATE * GAP_S), np.int16)
+                for event in endpointer.feed(pcm):
                     if isinstance(event, SpeechHeld):
                         self._barge_in()
                     elif isinstance(event, Utterance):
+                        logging.info(
+                            "utterance %.1fs rms=%d",
+                            len(event.pcm) / STT_RATE,
+                            np.sqrt(np.mean(event.pcm.astype(float) ** 2)),
+                        )
                         self._start_turn(event.pcm)
         except MediaStreamError:
             return
+        finally:
+            pending.cancel()
 
     def _barge_in(self) -> None:
         """Caller spoke over us: stop audio, drop pending synthesis, remember what was heard."""
@@ -95,14 +116,23 @@ class Conversation:
 
     async def _run_turn(self, pcm: np.ndarray) -> None:
         try:
+            t0 = time.monotonic()
             text = await self.speech.transcribe(pcm)
             if not text:
                 return
+            t1 = time.monotonic()
             logging.info("caller: %s", text)
-            reply, hangup = split_hangup(await self.respond(self._note + text))
+            reply, hangup = split_hangup(await self._answer(self._note + text))
             self._note = ""
+            t2 = time.monotonic()
             logging.info("agent: %s", reply)
             await self._speak(Turn(sentences(reply), self.playback.played))
+            logging.info(
+                "timing stt=%.1fs agent=%.1fs first-audio=%.1fs",
+                t1 - t0,
+                t2 - t1,
+                time.monotonic() - t2,
+            )
             await self.playback.wait_idle()
             if hangup:
                 await self.on_hangup()
@@ -111,6 +141,19 @@ class Conversation:
         except Exception:
             logging.exception("turn failed")
             await self._apologize()
+
+    async def _answer(self, text: str) -> str:
+        """Ask the agent; if it is slow, say a short filler so the line is not dead."""
+        reply = asyncio.ensure_future(self.respond(text))
+        try:
+            done, _ = await asyncio.wait({reply}, timeout=self.filler_after)
+            if not done:
+                if self._filler_audio is None:
+                    self._filler_audio = await self.speech.synthesize(FILLER)
+                self.playback.play(self._filler_audio)
+            return await reply
+        finally:
+            reply.cancel()  # no-op when finished; stops the agent call on barge-in
 
     async def _speak(self, turn: Turn) -> None:
         self._turn = turn

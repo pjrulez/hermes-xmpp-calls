@@ -22,8 +22,9 @@ class Caller(MediaStreamTrack):
 
     kind = "audio"
 
-    def __init__(self, script: list[tuple[str, int]]) -> None:
+    def __init__(self, script: list[tuple[str, int]], stall: bool = False) -> None:
         super().__init__()
+        self.stall = stall  # after the script, send nothing (a muted client) instead of ending
         self.frames = []
         for kind, ms in script:
             for _ in range(ms // 20):
@@ -36,6 +37,8 @@ class Caller(MediaStreamTrack):
     async def recv(self) -> av.AudioFrame:
         await asyncio.sleep(0)  # let the turn task run between frames
         if self.i >= len(self.frames):
+            if self.stall:
+                await asyncio.Event().wait()
             raise MediaStreamError
         self.i += 1
         return self.frames[self.i - 1]
@@ -138,3 +141,36 @@ def test_heard_fraction_math() -> None:
     assert turn.heard_fraction(100) == 0
     assert turn.heard_fraction(600) == 0.25
     assert turn.heard_fraction(2100) == 1
+
+
+async def test_muted_client_still_ends_the_utterance() -> None:
+    """Dino sends no RTP while muted; silence must come from the clock."""
+    replies = []
+
+    async def respond(text: str) -> str:
+        replies.append(text)
+        return "Okay then, I heard you just fine."
+
+    async def hangup() -> None: ...
+
+    convo = Conversation(FakeSpeech(), respond, hangup)
+    convo.attach(Caller([("talk", 1000)], stall=True))
+    await asyncio.sleep(1.8)
+    convo.stop()
+    assert replies == ["hello there"]
+
+
+async def test_slow_agent_gets_a_filler() -> None:
+    speech = FakeSpeech()
+
+    async def respond(text: str) -> str:
+        await asyncio.sleep(0.15)
+        return "The answer is long enough to be one sentence."
+
+    async def hangup() -> None: ...
+
+    convo = Conversation(speech, respond, hangup, filler_after=0.05)
+    convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
+    await settle(convo)
+    assert speech.spoken[0] == "One moment."
+    assert speech.spoken[1].startswith("The answer")

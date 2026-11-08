@@ -38,6 +38,7 @@ select = ["E", "F", "I", "B", "UP", "ASYNC", "SIM", "RUF", "PT"]
 
 [tool.pyrefly]
 project-includes = ["src", "tests"]
+search-path = ["."]
 python-version = "3.14"
 
 [tool.pytest.ini_options]

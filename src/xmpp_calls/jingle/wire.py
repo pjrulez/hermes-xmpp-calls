@@ -10,6 +10,7 @@ from .model import (
     JINGLE,
     RTCP_FB,
     RTP,
+    RTP_INFO,
     Candidate,
     Content,
     Fingerprint,
@@ -39,6 +40,9 @@ def parse(element: ET.Element) -> Jingle:
         if reason is not None
         else None
     )
+    info = next(
+        (c.tag.rsplit("}", 1)[-1] for c in element if c.tag.startswith(f"{{{RTP_INFO}}}")), None
+    )
     return Jingle(
         action=element.get("action", ""),
         sid=element.get("sid", ""),
@@ -46,6 +50,7 @@ def parse(element: ET.Element) -> Jingle:
         contents=tuple(_parse_content(c) for c in element.findall(_q(JINGLE, "content"))),
         group=group,
         reason=reason_name,
+        info=info,
     )
 
 

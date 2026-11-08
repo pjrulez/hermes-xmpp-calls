@@ -49,6 +49,7 @@ class Conversation:
         self.speech, self.respond, self.on_hangup = speech, respond, on_hangup
         self.filler_after = filler_after  # seconds of waiting for the agent before "One moment."
         self._filler_audio: np.ndarray | None = None
+        self._endpointer = Endpointer()
         self.playback = PlaybackTrack()
         self._task: asyncio.Task[None] | None = None  # the running turn
         self._listener: asyncio.Task[None] | None = None
@@ -64,13 +65,18 @@ class Conversation:
         """Speak without a turn (greeting, outgoing-call opening)."""
         await self._speak(Turn(sentences(text), self.playback.played))
 
+    def caller_muted(self) -> None:
+        """Jingle `mute` from the caller is a "stopped talking" signal: do not wait for silence."""
+        for utterance in self._endpointer.flush():
+            self._start_turn(utterance.pcm)
+
     def stop(self) -> None:
         for task in (self._listener, self._task):
-            if task:
+            if task and task is not asyncio.current_task():  # hang-up runs inside the turn task
                 task.cancel()
 
     async def _listen(self, track: MediaStreamTrack) -> None:
-        down, endpointer = Downsampler(), Endpointer()
+        down, endpointer = Downsampler(), self._endpointer
         pending = asyncio.ensure_future(track.recv())
         try:
             while True:

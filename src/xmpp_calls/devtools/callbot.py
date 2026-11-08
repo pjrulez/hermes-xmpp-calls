@@ -1,4 +1,5 @@
-"""Conversation bot (task B3): like the echo bot, but the caller talks to a Hermes agent.
+"""Dev call bot: the real CallController on the logger bot's account, with the Hermes CLI as the
+agent. Wire log and captures stay on (see logbot).
 
 Run: uv run python -m xmpp_calls.devtools.callbot   (reads .scratch/bot.env)
 Env: CALLBOT_TOOLSETS (default "web") limits what the agent may use during calls.
@@ -7,42 +8,40 @@ Env: CALLBOT_TOOLSETS (default "web") limits what the agent may use during calls
 import asyncio
 import logging
 import sys
+from typing import Any
 
-from xmpp_calls import turn
-from xmpp_calls.conversation import Conversation
-from xmpp_calls.devtools.echobot import EchoBot
-from xmpp_calls.devtools.logbot import SCRATCH, load_env
-from xmpp_calls.media import CallMedia
+from xmpp_calls.controller import CallController
+from xmpp_calls.devtools.logbot import SCRATCH, LogBot, load_env
 from xmpp_calls.providers import HermesCLIResponder, HermesSpeech
 
-GREETING = "Hi, I'm here. What can I do for you?"
+
+class DevHost:
+    def __init__(self, allowed: str) -> None:
+        self.allowed = allowed
+        self.speech = HermesSpeech()
+        self._agents: dict[str, HermesCLIResponder] = {}
+
+    def authorized(self, bare_jid: str) -> bool:
+        return bare_jid == self.allowed
+
+    async def ask(self, peer: str, call_id: str, text: str) -> str:
+        return await self._agents.setdefault(call_id, HermesCLIResponder())(text)
 
 
-class CallBot(EchoBot):
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
-        self._background: set[asyncio.Task[None]] = set()  # strong refs for greeting tasks
+class CallBot(LogBot):
+    def __init__(self, *args: Any) -> None:
+        super().__init__(*args)
+        self.controller = CallController(self, DevHost(self.allowed))
+        self.controller.install()
 
-    async def new_media(self, sid: str) -> CallMedia:
-        async def hang_up() -> None:
-            await self.end(sid, "success", notify=True)
+    async def on_start(self, _event: object) -> None:
+        await super().on_start(_event)
+        await self.controller.advertise()
 
-        convo = Conversation(HermesSpeech(), HermesCLIResponder(), hang_up)
-        media = CallMedia(await turn.fetch(self), make_outgoing=convo.attach)
-        media.pc.on("connectionstatechange", lambda: self._on_state(media, convo))
-        greeting = asyncio.create_task(self._greet(media, convo))
-        self._background.add(greeting)
-        greeting.add_done_callback(self._background.discard)
-        return media
+    # The controller owns call signaling; the logger's own call handlers step aside.
+    async def on_jmi(self, stanza: Any) -> None: ...
 
-    async def _greet(self, media: CallMedia, convo: Conversation) -> None:
-        await media.connected.wait()
-        await convo.say(GREETING)
-
-    @staticmethod
-    def _on_state(media: CallMedia, convo: Conversation) -> None:
-        if media.pc.connectionState in ("closed", "failed"):
-            convo.stop()
+    async def on_jingle(self, stanza: Any) -> None: ...
 
 
 def main() -> None:

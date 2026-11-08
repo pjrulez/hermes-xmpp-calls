@@ -64,6 +64,14 @@ class Endpointer:
             events += self._frame(frame)
         return events
 
+    def flush(self) -> list[Utterance]:
+        """The caller says they stopped talking (client muted): end the open utterance now."""
+        events: list[Utterance] = []
+        if self._open and self._voiced >= self.min_ms:
+            events.append(Utterance(np.concatenate(self._frames)))
+        self._open, self._frames, self._idle = False, [], []
+        return events
+
     def _frame(self, frame: np.ndarray) -> list[SpeechHeld | Utterance]:
         rms = float(np.sqrt(np.mean(frame.astype(np.float64) ** 2)))
         loud = rms > max(self.min_rms, 3 * self._floor)

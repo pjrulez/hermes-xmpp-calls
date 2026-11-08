@@ -7,6 +7,7 @@ RTP = "urn:xmpp:jingle:apps:rtp:1"
 ICE_UDP = "urn:xmpp:jingle:transports:ice-udp:1"
 DTLS = "urn:xmpp:jingle:apps:dtls:0"
 RTCP_FB = "urn:xmpp:jingle:apps:rtp:rtcp-fb:0"
+RTP_INFO = "urn:xmpp:jingle:apps:rtp:info:1"
 HDREXT = "urn:xmpp:jingle:apps:rtp:rtp-hdrext:0"
 SSMA = "urn:xmpp:jingle:apps:rtp:ssma:0"
 GROUPING = "urn:xmpp:jingle:apps:grouping:0"
@@ -86,3 +87,4 @@ class Jingle:
     contents: tuple[Content, ...] = ()
     group: tuple[str, ...] = field(default=())
     reason: str | None = None
+    info: str | None = None  # session-info payload: "mute", "unmute", "active", "ringing", ...

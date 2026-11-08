@@ -316,8 +316,21 @@ async def test_outgoing_call_to_stranger_is_refused() -> None:
 
 async def test_outgoing_call_while_busy() -> None:
     ctl, _ = make()
+    ctl.config = CallConfig(busy_wait=0.3)
     ctl.calls["x"] = object()  # type: ignore[assignment]
     assert (await ctl.place_call("owner@example.org", "Hi")).startswith("busy")
+
+
+async def test_outgoing_call_waits_for_the_current_call_to_end() -> None:
+    ctl, client = make()
+    ctl.calls["x"] = object()  # type: ignore[assignment]
+    task = asyncio.create_task(ctl.place_call("owner@example.org", "Hi"))
+    await asyncio.sleep(0.4)
+    assert client.sent == []  # still waiting its turn
+    del ctl.calls["x"]
+    await asyncio.sleep(0.5)
+    assert [s.kind for s in client.sent] == ["message"]  # the call proposal went out
+    task.cancel()
 
 
 def proceed(proposal: str, verb: str = "proceed") -> FakeStanza:

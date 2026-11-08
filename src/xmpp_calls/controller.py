@@ -78,6 +78,7 @@ class CallConfig:
     )
     ack_tone: bool = True  # short beep when an utterance is captured
     hangup_grace: float = 5.0  # warning beeps, then this long to speak before a planned hang-up
+    busy_wait: float = 90.0  # outgoing calls wait this long for the current call to end
     recap: bool = True  # after a call with talk in it, text the person what was asked and done
     barge_in: str = (
         "queue"  # "queue": talk any time, it becomes the next turn; "stop": cut the agent off
@@ -312,6 +313,10 @@ class CallController:
         """
         if not self.host.authorized(peer):
             return f"refused: {peer} is not allowed to be called"
+        deadline = asyncio.get_running_loop().time() + self.config.busy_wait
+        # A result can arrive just as the previous call ends: queue behind it instead of failing.
+        while self._busy() and asyncio.get_running_loop().time() < deadline:  # noqa: ASYNC110
+            await asyncio.sleep(0.25)
         if self._busy():
             return "busy: another call is in progress"
         proposal = str(uuid.uuid4())

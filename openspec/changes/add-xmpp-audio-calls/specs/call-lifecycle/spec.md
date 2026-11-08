@@ -59,3 +59,17 @@ A short transcript that is only a stock phrase ("Thank you", "Thanks for watchin
 #### Scenario: Silence transcribed as words
 - **WHEN** the recognizer returns "Thank you." for a one-second sound
 - **THEN** no turn is created
+
+### Requirement: Idle timeout
+A call in which nobody has spoken, no reply is playing and the agent is not working for `idle_timeout` seconds SHALL end with a spoken goodbye.
+
+#### Scenario: Forgotten call
+- **WHEN** the line stays silent past the idle timeout
+- **THEN** the agent says it is hanging up and the call ends
+
+### Requirement: Transcripts stay out of the log
+Transcripts and replies SHALL be logged only as word counts unless `log_transcripts` is on.
+
+#### Scenario: Default log
+- **WHEN** a caller says three words
+- **THEN** the log shows "caller: 3 words" and not the words

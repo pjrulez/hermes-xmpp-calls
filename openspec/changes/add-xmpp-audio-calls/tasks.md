@@ -23,7 +23,7 @@ Evidence names the file that must exist before the box is ticked. "Operator" = n
 - [x] B6 Barge-in and heard-fraction note. (`dep-hermes-call-integration`) Evidence: queue/steer/stop; steer seen live ("steered the running turn").
 - [x] B6b Outgoing calls: JMI initiation, ring timeout, opening synthesized during ringing, agent tool and cron use. Operator. (`dep-hermes-call-integration`) Evidence: live: agent calls operator, missed-call text, call-back note.
 - [x] B7 Plugin integration behind `xmpp.calls.enabled`, authorization, limits, failure isolation, `plugin.yaml` dependencies. (all) Evidence: plugin glue, `plugin/tests/test_calls_glue.py`, live on the fw gateway.
-- [ ] B8 Layer-boundary and leak tests (50-call loop). (`dep-aiortc-media`)
+- [x] B8 Layer-boundary and leak tests (50-call loop). (`dep-aiortc-media`) Evidence: `RESEARCH/evidence/leak-loop.txt` (50 calls: fds 10->10, threads 2->2, tasks 1->1; `RUN_LEAK=1 pytest tests/test_leaks.py`).
 - [ ] B9 fw trial with the production account after review. Operator.
 - [ ] B10 README compatibility statement and Prosody checklist. (`dep-prosody-server`)
 - [ ] B11 Rollout change for mad and django (separate change, needs VM Python decision).

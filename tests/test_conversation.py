@@ -631,3 +631,56 @@ async def test_hanging_up_while_still_talking_handles_what_was_said() -> None:
     await asyncio.sleep(0.3)  # the utterance is still open
     await convo.finish()
     assert texts == ["Noted."]
+
+
+async def test_idle_for_counts_silence_but_not_work_or_playback() -> None:
+    async def respond(text: str) -> str:
+        return "x"
+
+    async def hangup() -> None:
+        pass
+
+    convo = Conversation(FakeSpeech(), respond, hangup)
+    convo.last_active -= 100
+    assert convo.idle_for() > 99
+    convo.playback.play(np.zeros(160, np.int16))
+    assert convo.idle_for() == 0.0  # still playing
+    convo.playback.flush()
+    convo._task = asyncio.create_task(asyncio.sleep(0.2))
+    assert convo.idle_for() == 0.0  # the agent is working
+    await convo._task
+    assert convo.idle_for() > 99
+
+
+async def test_what_was_said_stays_out_of_the_log_unless_asked(caplog) -> None:
+    import logging
+
+    async def respond(text: str) -> str:
+        return "A private answer."
+
+    async def hangup() -> None:
+        pass
+
+    caplog.set_level(logging.INFO)
+    convo = Conversation(
+        FakeSpeech("my secret words"),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        ack_tone_enabled=False,
+    )
+    convo.attach(Caller([("talk", 600), ("quiet", 1000)]))
+    await settle(convo)
+    assert "secret" not in caplog.text
+    assert "caller: 3 words" in caplog.text
+    convo2 = Conversation(
+        FakeSpeech("my secret words"),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        ack_tone_enabled=False,
+        log_text=True,
+    )
+    convo2.attach(Caller([("talk", 600), ("quiet", 1000)]))
+    await settle(convo2)
+    assert "caller: my secret words" in caplog.text

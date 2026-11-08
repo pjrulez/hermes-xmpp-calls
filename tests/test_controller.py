@@ -438,3 +438,38 @@ async def test_hanging_up_does_not_cancel_the_agents_work() -> None:
     assert done.is_set()
     assert ("owner@example.org", "All done.") in ctl.host.texts  # type: ignore[attr-defined]
     await phone.close()
+
+
+async def test_an_idle_call_says_goodbye_and_ends() -> None:
+    ctl, _, _, phone, spoken = await _run_outgoing()
+    sid = next(iter(ctl.calls))
+    ctl.config = CallConfig(idle_timeout=0.2, max_seconds=30)
+    ctl.calls[sid].convo.last_active -= 5
+    ctl.calls[sid].convo.playback.flush()
+    task = asyncio.create_task(ctl._limit(sid))
+    for _ in range(80):
+        if sid not in ctl.calls:
+            break
+        await asyncio.sleep(0.25)
+    task.cancel()
+    assert sid not in ctl.calls
+    assert any("hanging up" in s for s in spoken)
+    await phone.close()
+
+
+def test_topic_cannot_smuggle_a_command_into_the_title() -> None:
+    ctl, _ = make()
+    seen: list[str] = []
+
+    async def name_call(peer: str, call_id: str, title: str) -> None:
+        seen.append(title)
+
+    ctl.host.name_call = name_call  # type: ignore[method-assign]
+
+    async def run() -> None:
+        ctl._name("sid", "owner@example.org", "to", "daily\n/stop now /new")
+        await asyncio.sleep(0.05)
+
+    asyncio.run(run())
+    assert "\n" not in seen[0]
+    assert seen[0].endswith("daily stop now new")

@@ -1,0 +1,2 @@
+calls=50 fds 10->10 threads 2->2 tasks 1->1
+1 passed in 22.50s

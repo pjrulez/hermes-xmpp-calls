@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+from types import SimpleNamespace
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -317,13 +318,13 @@ async def test_outgoing_call_to_stranger_is_refused() -> None:
 async def test_outgoing_call_while_busy() -> None:
     ctl, _ = make()
     ctl.config = CallConfig(busy_wait=0.3)
-    ctl.calls["x"] = object()  # type: ignore[assignment]
+    ctl.calls["x"] = SimpleNamespace(peer="other@example.org/res")  # type: ignore[assignment]
     assert (await ctl.place_call("owner@example.org", "Hi")).startswith("busy")
 
 
 async def test_outgoing_call_waits_for_the_current_call_to_end() -> None:
     ctl, client = make()
-    ctl.calls["x"] = object()  # type: ignore[assignment]
+    ctl.calls["x"] = SimpleNamespace(peer="other@example.org/res")  # type: ignore[assignment]
     task = asyncio.create_task(ctl.place_call("owner@example.org", "Hi"))
     await asyncio.sleep(0.4)
     assert client.sent == []  # still waiting its turn
@@ -378,4 +379,15 @@ async def test_call_without_talk_has_no_recap() -> None:
     await ctl.end(sid, "success", notify=True)
     await asyncio.sleep(0.2)
     assert ctl.host.texts == []  # type: ignore[attr-defined]
+    await phone.close()
+
+
+async def test_outgoing_call_to_someone_already_on_a_call_is_said_there() -> None:
+    ctl, client, _, phone, spoken = await _run_outgoing()
+    before = len(client.sent)
+    result = await ctl.place_call("owner@example.org", "The result is in.")
+    await asyncio.sleep(0.3)
+    assert result.startswith("connected: the person is already on a call")
+    assert len(client.sent) == before  # no second call was proposed
+    assert "The result is in." in " ".join(spoken)
     await phone.close()

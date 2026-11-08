@@ -288,9 +288,15 @@ async def test_hang_up_after_ends_the_call_when_the_opening_is_done() -> None:
 
 async def test_outgoing_call_not_answered_is_retracted() -> None:
     ctl, client = make()
-    ctl.config = CallConfig(ring_timeout=0)
+    ctl.config = CallConfig(ring_timeout=0, ring_attempts=2, ring_pause=0)
     result = await ctl.place_call("owner@example.org", "Hello")
     assert result.startswith("no answer")
+    assert [m.xml[0].tag.split("}")[1] for m in client.sent if m.kind == "message"] == [
+        "propose",
+        "retract",
+        "propose",
+        "retract",
+    ]  # it rang twice before giving up
     assert client.jmi_sent()[-1][1] == "retract"
     assert ctl._ringing == {}
     ((peer, text),) = ctl.host.texts  # type: ignore[attr-defined]
@@ -301,6 +307,7 @@ async def test_outgoing_call_not_answered_is_retracted() -> None:
 
 async def test_outgoing_call_declined() -> None:
     ctl, client = make()
+    ctl.config = CallConfig(ring_attempts=1)
     task = asyncio.create_task(ctl.place_call("owner@example.org", "Hello"))
     await asyncio.sleep(0.05)
     proposal = str(client.sent[0].xml[0].get("id"))

@@ -500,7 +500,9 @@ async def test_planned_hangup_warns_and_waits_for_speech() -> None:
     convo = Conversation(FakeSpeech(), respond, hangup)
     assert await convo.grace(0.1) is False  # nobody spoke: time to hang up
     assert len(convo.playback._buf) == len(warn_tone())  # the warning beeps were queued
-    asyncio.get_running_loop().call_later(0.05, convo._spoke.set)
+    loop = asyncio.get_running_loop()
+    loop.call_later(0.05, convo._spoke.set)
+    loop.call_later(0.1, convo._utterances.put_nowait, True)  # and the transcript held words
     assert await convo.grace(0.5) is True  # spoke in time: the call goes on
     assert await convo.grace(0) is False  # grace 0 turns the warning off
 
@@ -551,3 +553,20 @@ async def test_calling_back_after_a_missed_call_tells_the_agent() -> None:
     assert seen
     assert "did not answer" in seen[0]
     assert "Your backup finished." in seen[0]
+
+
+async def test_noise_during_the_hangup_grace_does_not_keep_the_call_open(monkeypatch) -> None:
+    async def respond(text: str) -> str:
+        return "x"
+
+    async def hangup() -> None:
+        pass
+
+    import xmpp_calls.conversation as module
+
+    monkeypatch.setattr(module, "NOISE_GRACE", 0.1)
+    convo = Conversation(FakeSpeech(), respond, hangup)
+    loop = asyncio.get_running_loop()
+    loop.call_later(0.05, convo._spoke.set)  # the voice detector fired ...
+    loop.call_later(0.1, convo._utterances.put_nowait, False)  # ... but the transcript was empty
+    assert await convo.grace(0.3) is False  # so the call still ends

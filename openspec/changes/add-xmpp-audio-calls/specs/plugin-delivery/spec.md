@@ -34,3 +34,14 @@ The README SHALL list tested clients and servers, Python versions, the Prosody s
 #### Scenario: Release
 - **WHEN** a release is tagged
 - **THEN** the list matches the last recorded device and server tests
+
+### Requirement: OMEMO key safety
+The OMEMO key file SHALL be written atomically with owner-only permissions, SHALL be held under a lock by one process, and SHALL NOT be replaced when it cannot be read; in those cases OMEMO SHALL stay off and the reason SHALL be logged. The one-shot sender SHALL NOT use OMEMO.
+
+#### Scenario: Corrupt file
+- **WHEN** the key file is cut off mid-write
+- **THEN** it is left untouched and OMEMO is off
+
+#### Scenario: Second process
+- **WHEN** another process already holds the file
+- **THEN** this process runs without OMEMO and does not write the file

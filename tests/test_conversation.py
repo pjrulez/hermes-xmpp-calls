@@ -75,7 +75,12 @@ async def test_turn_is_transcribed_answered_and_spoken() -> None:
     async def hangup() -> None: ...
 
     convo = Conversation(
-        speech, respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+        speech,
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        ack_tone_enabled=False,
     )
     convo.attach(Caller([("quiet", 200), ("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
@@ -94,7 +99,12 @@ async def test_empty_transcript_makes_no_turn() -> None:
     async def hangup() -> None: ...
 
     convo = Conversation(
-        FakeSpeech(""), respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+        FakeSpeech(""),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        ack_tone_enabled=False,
     )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
@@ -111,7 +121,12 @@ async def test_hangup_marker_is_not_spoken_and_ends_call() -> None:
         ended.append(True)
 
     convo = Conversation(
-        speech, respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+        speech,
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        ack_tone_enabled=False,
     )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
@@ -131,7 +146,12 @@ async def test_barge_in_flushes_audio_and_notes_heard_fraction() -> None:
     async def hangup() -> None: ...
 
     convo = Conversation(
-        speech, respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+        speech,
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        ack_tone_enabled=False,
     )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
@@ -163,7 +183,12 @@ async def test_muted_client_still_ends_the_utterance() -> None:
     async def hangup() -> None: ...
 
     convo = Conversation(
-        FakeSpeech(), respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+        FakeSpeech(),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        ack_tone_enabled=False,
     )
     convo.attach(Caller([("talk", 1000)], stall=True))
     await asyncio.sleep(1.8)
@@ -186,6 +211,7 @@ async def test_slow_agent_gets_a_filler() -> None:
         hangup,
         filler_after=0.05,
         endpointer=energy_endpointer(),
+        barge_in="stop",
         ack_tone_enabled=False,
     )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
@@ -215,7 +241,12 @@ async def test_pause_mid_thought_is_joined_not_forgotten() -> None:
     async def hangup() -> None: ...
 
     convo = Conversation(
-        Counting(), respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+        Counting(),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        ack_tone_enabled=False,
     )
     convo.attach(Caller([("talk", 600), ("quiet", 900), ("talk", 600), ("quiet", 1000)]))
     await settle(convo)
@@ -231,7 +262,12 @@ async def test_utterance_end_plays_the_ack_tone() -> None:
     async def hangup() -> None: ...
 
     convo = Conversation(
-        FakeSpeech(), respond, hangup, endpointer=energy_endpointer(), filler_after=60
+        FakeSpeech(),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        filler_after=60,
     )
     convo.attach(Caller([("talk", 800), ("quiet", 1000)]))
     await settle(convo)
@@ -260,11 +296,13 @@ async def test_failed_speech_falls_back_to_text() -> None:
         respond,
         hangup,
         endpointer=energy_endpointer(),
+        barge_in="stop",
         ack_tone_enabled=False,
         fallback_text=post,
     )
     convo.attach(Caller([("talk", 800), ("quiet", 1000)]))
     await settle(convo)
+    await asyncio.sleep(2.5)  # two retries with backoff before giving up
     assert posted == ["This reply cannot be spoken, sadly."]
 
 
@@ -282,7 +320,7 @@ async def test_protected_speech_ignores_the_caller_until_finished() -> None:
 
     async def hangup() -> None: ...
 
-    convo = Conversation(Short(), respond, hangup, endpointer=energy_endpointer())
+    convo = Conversation(Short(), respond, hangup, endpointer=energy_endpointer(), barge_in="stop")
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     briefing = asyncio.create_task(
         convo.say(
@@ -307,9 +345,143 @@ async def test_unprotected_say_can_be_interrupted() -> None:
         lambda _t: asyncio.sleep(0, "x"),
         lambda: asyncio.sleep(0),
         endpointer=energy_endpointer(),
+        barge_in="stop",
     )
     await convo.say("Hello there my friend, how are you doing today?")
     assert convo.playback.busy
     convo.attach(Caller([("talk", 800), ("quiet", 100)]))
     await convo._listener  # type: ignore[misc]
     assert not convo.playback.busy or convo._ack is not None
+
+
+async def test_synthesis_is_retried_when_the_queue_is_full() -> None:
+    attempts: list[str] = []
+
+    class Flaky(FakeSpeech):
+        async def synthesize(self, text: str) -> np.ndarray:
+            attempts.append(text)
+            if len(attempts) == 1:
+                raise RuntimeError("queue_full")
+            return np.ones(OUT_RATE, np.int16)
+
+    convo = Conversation(Flaky(), lambda _t: asyncio.sleep(0, "x"), lambda: asyncio.sleep(0))
+    await convo.say("A single sentence that is long enough to stand.")
+    assert len(attempts) == 2
+    assert convo.playback.busy
+
+
+async def test_failed_sentence_posts_the_rest_as_text() -> None:
+    """The 'brief me' bug: one sentence failed and the briefing silently stopped."""
+    posted: list[str] = []
+
+    class FailsOnThird(FakeSpeech):
+        async def synthesize(self, text: str) -> np.ndarray:
+            if "third" in text:
+                raise RuntimeError("queue_full")
+            return np.ones(4800, np.int16)
+
+    async def post(text: str) -> None:
+        posted.append(text)
+
+    convo = Conversation(
+        FailsOnThird(),
+        lambda _t: asyncio.sleep(0, "x"),
+        lambda: asyncio.sleep(0),
+        fallback_text=post,
+    )
+    await convo.say(
+        "The first sentence is spoken fine. The second sentence is spoken fine. "
+        "The third sentence cannot be made. The fourth sentence follows after it."
+    )
+    assert len(convo.playback._buf) == 2 * 4800
+    assert posted == ["The third sentence cannot be made. The fourth sentence follows after it."]
+
+
+async def test_prepare_synthesizes_one_sentence_at_a_time() -> None:
+    running = peak = 0
+
+    class Counting(FakeSpeech):
+        async def synthesize(self, text: str) -> np.ndarray:
+            nonlocal running, peak
+            running += 1
+            peak = max(peak, running)
+            await asyncio.sleep(0.02)
+            running -= 1
+            return np.ones(4800, np.int16)
+
+    convo = Conversation(Counting(), lambda _t: asyncio.sleep(0, "x"), lambda: asyncio.sleep(0))
+    text = (
+        "Sentence number one is here. Sentence number two is here. Sentence number three is here."
+    )
+    convo.prepare(text)
+    await convo.say(text)
+    assert peak == 1
+    assert len(convo.playback._buf) == 3 * 4800
+
+
+async def test_queue_mode_does_not_cut_the_agent_off_and_answers_afterwards() -> None:
+    """Talking while the agent speaks: its audio keeps playing, your words become the next turn."""
+    said: list[str] = []
+    transcripts = iter(["first question", "and a follow up"])
+
+    class Scripted(FakeSpeech):
+        async def transcribe(self, pcm: np.ndarray) -> str:
+            return next(transcripts)
+
+    async def respond(text: str) -> str:
+        said.append(text)
+        return "This is a long enough answer to be spoken aloud."
+
+    convo = Conversation(
+        Scripted(),
+        respond,
+        lambda: asyncio.sleep(0),
+        endpointer=energy_endpointer(),
+        ack_tone_enabled=False,
+    )
+    convo.attach(Caller([("talk", 800), ("quiet", 1000)]))
+    await settle(convo)
+    assert said == ["first question"]
+    assert convo.playback.busy
+    spoken_before = len(convo.playback._buf)
+    # the caller speaks again while the answer is still queued for playback
+    await convo._hear(np.ones(16000, np.int16) * 3000)
+    assert convo._queued == ["and a follow up"]
+    assert len(convo.playback._buf) == spoken_before  # nothing was flushed
+    while convo.playback.busy:  # the answer finishes playing
+        await convo.playback.recv()
+    for _ in range(50):
+        if len(said) == 2:
+            break
+        await asyncio.sleep(0.02)
+    assert said == ["first question", "and a follow up"]
+    convo.stop()
+
+
+async def test_queue_mode_steers_a_turn_that_is_still_thinking() -> None:
+    steered: list[str] = []
+    release = asyncio.Event()
+
+    async def respond(text: str) -> str:
+        await release.wait()
+        return "Done with that, thank you."
+
+    async def steer(text: str) -> bool:
+        steered.append(text)
+        return True
+
+    convo = Conversation(
+        FakeSpeech("start the report"),
+        respond,
+        lambda: asyncio.sleep(0),
+        ack_tone_enabled=False,
+        steer=steer,
+    )
+    await convo._hear(np.ones(16000, np.int16))  # starts the turn
+    await asyncio.sleep(0.05)
+    assert convo._thinking
+    await convo._hear(np.ones(16000, np.int16))  # said while the agent works
+    assert steered == ["start the report"]
+    assert convo._queued == []
+    release.set()
+    convo.stop()

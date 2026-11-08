@@ -27,6 +27,9 @@ class DevHost:
     async def ask(self, peer: str, call_id: str, text: str) -> str:
         return await self._agents.setdefault(call_id, HermesCLIResponder())(text)
 
+    async def steer(self, peer: str, call_id: str, text: str) -> bool:
+        return False  # a CLI turn cannot be steered; the speech is queued
+
     async def post_text(self, peer: str, text: str) -> None:
         logging.warning("could not speak; text reply: %s", text)
 

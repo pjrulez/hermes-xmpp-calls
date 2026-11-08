@@ -72,6 +72,9 @@ class FakeHost:
 
     async def post_text(self, peer: str, text: str) -> None: ...
 
+    async def steer(self, peer: str, call_id: str, text: str) -> bool:
+        return False
+
 
 class FakeStanza:
     def __init__(self, xml: ET.Element, sender: str, kind: str = "set") -> None:

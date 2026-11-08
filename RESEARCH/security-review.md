@@ -20,3 +20,23 @@ Scope: everything the first PR adds. Status: **F** found and fixed, **A** accept
 | 14 | Jingle/SDP parsers | Malformed numbers in a peer's offer or candidate raised bare `ValueError`s (the controller survived them through its catch-all). Both now raise `JingleError`; 800 mutated real offers and hostile candidate lines are in `tests/test_jingle_fuzz.py`. | F |
 | 15 | Incoming proposals | A `propose` from an allowed user is answered at once and keeps no state until a `session-initiate` arrives; a second call gets `busy`. Nothing accumulates, so no per-user proposal limit is needed. | OK |
 | 16 | Open | Review by a second person before the PR; run the parsers under a real fuzzer (hypothesis or atheris) for longer than the unit test. | O |
+
+## Second review (independent reviewer, 2026-11-08)
+
+| # | Finding | Status |
+|---|---|---|
+| R1 | A call whose media died (ICE never connected, phone left wifi) kept the line forever: the goodbye waited for audio that nobody pulled, so `max_seconds` never applied. Now bounded waits, `failed`/`closed` ends the call, 40 s connect limit. | F |
+| R2 | SDP injection: XML character references could put a newline in ufrag/pwd/mid/fmtp and add a second `m=` section. Now every SDP value is checked, and the offer must produce exactly one audio section. | F |
+| R3 | Remote ICE candidates were not filtered (loopback, cloud metadata, hostnames, mDNS, thousands of them). Now UDP unicast only, ports 1024+, 16 per call, bounded wait. | F |
+| R4 | The `xmpp_call` tool gave up after `ring_timeout + 60` s and cancelled a call mid-ring, leaving a ghost call and no text fallback. Timeout now covers the schedule, and cancellation retracts the ring and ends the call. | F |
+| R5 | The one-call limit raced with the TURN fetch. The line is now claimed before the first await. | F |
+| R6 | `xmpp_call` had no limit. Now 6 per hour and 1500 characters of opening. | F |
+| R7 | Jingle stanzas were not tied to the call's peer; a repeated sid or a failing stanza from another allowed user could end someone's call. Now ignored. | F |
+| R8 | A bounced own `propose` (error message) was treated as an incoming call. Now ignored. | F |
+| R9 | `CALL REQUEST` context was recorded before the loop guard and stayed usable. Now recorded after the guard and used once. | F |
+| R10 | Recap and missed-call text could be captured as speech of a running turn. They now carry their own `reply_to`. | F |
+| R11 | The `heard no words` log line printed the transcript even with `log_transcripts` off. Removed. | F |
+| R12 | One-shot sends, recap, missed-call text and `xmpp_message` fall back to plaintext when OMEMO is unavailable or fails. Documented in the README; an `omemo_required` option is a possible follow-up. | A |
+| R13 | `xmpp_message` can reach any allowed user, not just the person of the current chat. Single-operator setups are unaffected; documented. | A |
+| R14 | Host candidates reveal LAN/tailnet addresses to the peer and server. A relay-only policy is a possible follow-up. | A |
+| R15 | The OMEMO store is fsynced on the event loop (a brief stall). | A |

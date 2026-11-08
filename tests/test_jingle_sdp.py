@@ -2,13 +2,21 @@
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 from xml.etree import ElementTree as ET
 
 import pytest
 from aiortc.sdp import SessionDescription
 
 from xmpp_calls.jingle import sdp, wire
-from xmpp_calls.jingle.model import JINGLE, Fingerprint, Jingle, SecurityError, UnsupportedError
+from xmpp_calls.jingle.model import (
+    JINGLE,
+    Fingerprint,
+    Jingle,
+    JingleError,
+    SecurityError,
+    UnsupportedError,
+)
 
 FIXTURES = Path(__file__).parent.parent / "RESEARCH/evidence/jmi-jingle-captures"
 FINGERPRINT = ":".join(["AB"] * 32)
@@ -21,8 +29,12 @@ def load(name: str) -> Jingle:
     # Fixtures are redacted ("X"); give the content a syntactically valid fingerprint.
     (content,) = offer.contents
     assert content.transport is not None
+    # ... and the redacted candidate addresses a real one.
+    candidates = tuple(replace(c, ip="192.0.2.5") for c in content.transport.candidates)
     transport = replace(
-        content.transport, fingerprint=Fingerprint("sha-256", "actpass", FINGERPRINT)
+        content.transport,
+        fingerprint=Fingerprint("sha-256", "actpass", FINGERPRINT),
+        candidates=candidates,
     )
     return replace(offer, contents=(replace(content, transport=transport),))
 
@@ -115,3 +127,46 @@ def test_answer_to_accept_content() -> None:
     accept = Jingle("session-accept", offer.sid, contents=(content,), group=offer.group)
     again = wire.parse(ET.fromstring(ET.tostring(wire.build(accept))))
     assert again == accept
+
+
+def _with(offer: Jingle, **changes: Any) -> Jingle:
+    (content,) = offer.contents
+    assert content.transport is not None
+    return replace(
+        offer, contents=(replace(content, transport=replace(content.transport, **changes)),)
+    )
+
+
+def test_a_newline_smuggled_into_an_attribute_is_refused() -> None:
+    offer = load("conversations-session-initiate.xml")
+    for field in ("ufrag", "pwd"):
+        with pytest.raises(JingleError):
+            sdp.offer_to_sdp(_with(offer, **{field: "abc\r\nm=video 9 RTP/AVP 96"}))
+
+
+def test_candidates_must_be_real_udp_addresses() -> None:
+    offer = load("dino-session-initiate.xml")
+    (content,) = offer.contents
+    assert content.transport is not None
+    first = content.transport.candidates[0]
+    for bad in (
+        replace(first, ip="127.0.0.1"),
+        replace(first, ip="169.254.169.254"),
+        replace(first, ip="::1"),
+        replace(first, ip="224.0.0.1"),
+        replace(first, ip="victim.local"),
+        replace(first, port=22),
+        replace(first, protocol="tcp"),
+    ):
+        assert not sdp.acceptable_candidate(bad), bad
+    for good in (replace(first, ip="192.0.2.7"), replace(first, ip="203.0.113.9")):
+        assert sdp.acceptable_candidate(good), good
+
+
+def test_a_flood_of_candidates_is_capped() -> None:
+    offer = load("dino-session-initiate.xml")
+    (content,) = offer.contents
+    assert content.transport is not None
+    many = tuple(replace(content.transport.candidates[0], id=str(i)) for i in range(500))
+    text = sdp.offer_to_sdp(_with(offer, candidates=many))
+    assert text.count("a=candidate:") == sdp.MAX_CANDIDATES

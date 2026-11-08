@@ -2,6 +2,7 @@
 
 import asyncio
 import fractions
+import time
 
 import av
 import numpy as np
@@ -684,3 +685,13 @@ async def test_what_was_said_stays_out_of_the_log_unless_asked(caplog) -> None:
     convo2.attach(Caller([("talk", 600), ("quiet", 1000)]))
     await settle(convo2)
     assert "caller: my secret words" in caplog.text
+
+
+async def test_waiting_for_dead_media_gives_up() -> None:
+    from xmpp_calls.audio import PlaybackTrack
+
+    playback = PlaybackTrack()
+    playback.play(np.zeros(16000, np.int16))  # nobody pulls recv(): the media is dead
+    started = time.monotonic()
+    await playback.wait_idle(limit=0.3)
+    assert time.monotonic() - started < 1.0

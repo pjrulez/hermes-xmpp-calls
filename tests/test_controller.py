@@ -473,3 +473,25 @@ def test_topic_cannot_smuggle_a_command_into_the_title() -> None:
     asyncio.run(run())
     assert "\n" not in seen[0]
     assert seen[0].endswith("daily stop now new")
+
+
+async def test_another_peers_jingle_stanza_cannot_touch_a_call() -> None:
+    ctl, _, _, phone, _ = await _run_outgoing()
+    sid = next(iter(ctl.calls))
+    from xmpp_calls.jingle.model import Jingle
+
+    await ctl.handle("mallory@example.org/x", Jingle("session-terminate", sid))
+    assert sid in ctl.calls
+    await ctl._fail(sid, {"from": "mallory@example.org/x"}, "general-error")
+    assert sid in ctl.calls  # an error caused by somebody else does not end it
+    await phone.close()
+
+
+async def test_a_call_whose_media_fails_is_ended() -> None:
+    ctl, _, _, phone, _ = await _run_outgoing()
+    sid = next(iter(ctl.calls))
+    media = ctl.calls[sid].media
+    assert media.on_lost is not None
+    await media.on_lost()
+    assert sid not in ctl.calls
+    await phone.close()

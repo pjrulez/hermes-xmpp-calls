@@ -12,7 +12,7 @@ from typing import Any
 
 from xmpp_calls.controller import CallController
 from xmpp_calls.devtools.logbot import SCRATCH, LogBot, load_env
-from xmpp_calls.providers import HermesCLIResponder, HermesSpeech
+from xmpp_calls.devtools.providers import HermesCLIResponder, HermesSpeech
 
 
 class DevHost:

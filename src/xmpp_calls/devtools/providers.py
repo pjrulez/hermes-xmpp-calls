@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from .audio import STT_RATE, decode_to_out_rate, wav_bytes
+from xmpp_calls.audio import STT_RATE, decode_to_out_rate, wav_bytes
 
 CONFIG = Path.home() / ".hermes" / "config.yaml"
 CALL_PROMPT = (

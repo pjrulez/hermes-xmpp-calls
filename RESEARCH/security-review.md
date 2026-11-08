@@ -17,4 +17,6 @@ Scope: everything the first PR adds. Status: **F** found and fixed, **A** accept
 | 11 | Dependencies | `aiortc`, `av`, `webrtcvad-wheels` and friends are optional, installed into `vendor/` or the Hermes env, imported only when `calls.enabled`. Licenses reviewed for the plugin fork in `RESEARCH/05-approach-decision.md`. No code copied from GPL, AGPL or MPL projects. | OK |
 | 12 | `plaintext_peers` | Turns OMEMO off for listed peers: opt-in, empty by default, documented as a security trade-off. | A |
 | 13 | Resource use | 50 sequential calls: file descriptors 10 to 10, threads 2 to 2, tasks 1 to 1 (`RESEARCH/evidence/leak-loop.txt`). | OK |
-| 14 | Open | Fuzzing of the SDP and Jingle parsers with hostile input; a limit on concurrent unanswered JMI proposals from an allowed user; review by a second person before the PR. | O |
+| 14 | Jingle/SDP parsers | Malformed numbers in a peer's offer or candidate raised bare `ValueError`s (the controller survived them through its catch-all). Both now raise `JingleError`; 800 mutated real offers and hostile candidate lines are in `tests/test_jingle_fuzz.py`. | F |
+| 15 | Incoming proposals | A `propose` from an allowed user is answered at once and keeps no state until a `session-initiate` arrives; a second call gets `busy`. Nothing accumulates, so no per-user proposal limit is needed. | OK |
+| 16 | Open | Review by a second person before the PR; run the parsers under a real fuzzer (hypothesis or atheris) for longer than the unit test. | O |

@@ -1,0 +1,33 @@
+from xmpp_calls.speech import clean, sentences, split_hangup
+
+
+def test_clean_rules() -> None:
+    text = "Use **this** [guide](https://x.io/a) or https://x.io/b.\n"
+    text += "```py\nprint(1)\n```\n- item `one`"
+    spoken = clean(text)
+    assert "http" not in spoken
+    assert "guide" in spoken
+    assert "a link" in spoken
+    assert "print" not in spoken
+    assert "code omitted" in spoken
+    assert "item one" in spoken
+    assert "*" not in spoken
+    assert "`" not in spoken
+
+
+def test_sentences_merge_short_pieces() -> None:
+    parts = sentences("Yes. It is sunny and warm outside today. No rain at all, and calm wind.")
+    assert parts == ["Yes. It is sunny and warm outside today.", "No rain at all, and calm wind."]
+    assert sentences("It is sunny and warm outside today. Yes!") == [
+        "It is sunny and warm outside today. Yes!"
+    ]
+
+
+def test_single_short_reply_stays_whole() -> None:
+    assert sentences("Okay.") == ["Okay."]
+    assert sentences("") == []
+
+
+def test_hangup_marker() -> None:
+    assert split_hangup("Bye now. [[hangup]]") == ("Bye now.", True)
+    assert split_hangup("Still here.") == ("Still here.", False)

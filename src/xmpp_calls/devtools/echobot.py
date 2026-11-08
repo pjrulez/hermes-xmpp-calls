@@ -58,7 +58,7 @@ class EchoBot(LogBot):
         if jingle.action == "session-initiate":
             session = Session(jingle.sid, we_initiated=False)
             session.apply("session-initiate", sent_by_us=False)
-            media = CallMedia(await turn.fetch(self))
+            media = await self.new_media(jingle.sid)
             call = self.calls[jingle.sid] = Call(peer, session, media)
             content = await media.answer(jingle)
             session.apply("session-accept", sent_by_us=True)
@@ -77,6 +77,10 @@ class EchoBot(LogBot):
                     await call.media.add_candidate(candidate)
         elif jingle.action == "session-terminate":
             await self.end(jingle.sid, None)
+
+    async def new_media(self, sid: str) -> CallMedia:
+        """Override to change what happens to the caller's audio (default: echo it)."""
+        return CallMedia(await turn.fetch(self))
 
     async def hang_up_later(self, sid: str) -> None:
         await asyncio.sleep(MAX_CALL_SECONDS)

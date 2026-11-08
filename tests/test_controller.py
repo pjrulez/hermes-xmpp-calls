@@ -8,7 +8,7 @@ import numpy as np
 import slixmpp
 
 from tests.helpers import make_offer
-from xmpp_calls.controller import JMI, CallController
+from xmpp_calls.controller import JMI, CallConfig, CallController
 from xmpp_calls.jingle import wire
 from xmpp_calls.jingle.model import Jingle
 
@@ -190,3 +190,84 @@ async def test_close_hangs_up_open_calls() -> None:
     assert client.jingle_sent()[-1].action == "session-terminate"
     await caller.close()
     await asyncio.sleep(0)
+
+
+async def test_outgoing_call_rings_offers_and_speaks_the_opening() -> None:
+    ctl, client = make()
+    spoken: list[str] = []
+    ctl.host.speech.synthesize = lambda text: _record(spoken, text)  # type: ignore[method-assign]
+    task = asyncio.create_task(ctl.place_call("owner@example.org", "Your backup finished."))
+    await asyncio.sleep(0.05)
+    (propose_msg,) = [s for s in client.sent if s.kind == "message"]
+    proposal = str(propose_msg.xml[0].get("id"))
+    assert propose_msg.xml[0].tag == f"{{{JMI}}}propose"
+    assert propose_msg.to == "owner@example.org"
+
+    await ctl._on_jmi(proceed(proposal))  # the phone answered
+    for _ in range(100):
+        initiates = [j for j in client.jingle_sent() if j.action == "session-initiate"]
+        if initiates:
+            break
+        await asyncio.sleep(0.05)
+    (initiate,) = initiates
+    assert initiate.sid == proposal
+    assert initiate.initiator == "bot@example.org/res"
+    assert client.sent[-1].to == PEER
+
+    # The phone side: an aiortc-backed CallMedia answers our offer.
+    from xmpp_calls.media import CallMedia
+
+    phone = CallMedia([])
+    accept = Jingle(
+        "session-accept", proposal, contents=(await phone.answer(initiate),), group=initiate.group
+    )
+    await ctl.handle(PEER, accept)
+    for candidate in initiate.contents[0].transport.candidates:  # type: ignore[union-attr]
+        await phone.add_candidate(candidate)
+    result = await asyncio.wait_for(task, 20)
+    assert result.startswith("connected")
+    assert "Your backup finished." in spoken
+    assert "began by saying: Your backup finished." in ctl.calls[proposal].convo._note
+    await ctl.close()
+    await phone.close()
+
+
+async def test_outgoing_call_not_answered_is_retracted() -> None:
+    ctl, client = make()
+    ctl.config = CallConfig(ring_timeout=0)
+    result = await ctl.place_call("owner@example.org", "Hello")
+    assert result.startswith("no answer")
+    assert client.jmi_sent()[-1][1] == "retract"
+    assert ctl._ringing == {}
+
+
+async def test_outgoing_call_declined() -> None:
+    ctl, client = make()
+    task = asyncio.create_task(ctl.place_call("owner@example.org", "Hello"))
+    await asyncio.sleep(0.05)
+    proposal = str(client.sent[0].xml[0].get("id"))
+    await ctl._on_jmi(proceed(proposal, "reject"))
+    assert (await task).startswith("declined")
+
+
+async def test_outgoing_call_to_stranger_is_refused() -> None:
+    ctl, client = make()
+    assert (await ctl.place_call("evil@example.org", "Hi")).startswith("refused")
+    assert client.sent == []
+
+
+async def test_outgoing_call_while_busy() -> None:
+    ctl, _ = make()
+    ctl.calls["x"] = object()  # type: ignore[assignment]
+    assert (await ctl.place_call("owner@example.org", "Hi")).startswith("busy")
+
+
+def proceed(proposal: str, verb: str = "proceed") -> FakeStanza:
+    message = ET.Element("message")
+    ET.SubElement(message, f"{{{JMI}}}{verb}", id=proposal)
+    return FakeStanza(message, PEER, "chat")
+
+
+async def _record(spoken: list[str], text: str) -> np.ndarray:
+    spoken.append(text)
+    return np.zeros(4800, np.int16)

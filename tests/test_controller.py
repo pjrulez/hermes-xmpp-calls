@@ -339,3 +339,10 @@ async def test_call_session_gets_a_recognizable_title() -> None:
     (title,) = ctl.host.titles  # type: ignore[attr-defined]
     assert re.fullmatch(r"Call to owner \d{4}-\d\d-\d\d \d\d:\d\d", title)
     await phone.close()
+
+
+async def test_call_title_includes_the_topic() -> None:
+    ctl, _, _, phone, _ = await _run_outgoing(topic="daily-note")
+    await asyncio.sleep(0.1)
+    assert ctl.host.titles[0].endswith(" daily-note")  # type: ignore[attr-defined]
+    await phone.close()

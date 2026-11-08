@@ -49,4 +49,6 @@ def test_stock_phrases_from_noise_are_phantoms_only_when_short() -> None:
     assert is_phantom("Thanks for watching!", 2.0)
     assert not is_phantom("Thank you.", 4.0)  # a long utterance is real speech
     assert not is_phantom("Yes, thank you very much", 1.5)
+    assert is_phantom("♪♪♪♪", 2.8)
+    assert is_phantom("[Music]", 9.0)
     assert not is_phantom("Okay.", 1.0)

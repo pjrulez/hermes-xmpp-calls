@@ -263,7 +263,10 @@ async def test_hang_up_after_ends_the_call_when_the_opening_is_done() -> None:
     sid = next(iter(ctl.calls))
     await asyncio.sleep(0.2)
     assert sid in ctl.calls  # still delivering
+    ctl.config = CallConfig(hangup_grace=0.5)
     ctl.calls[sid].convo.playback.flush()
+    await asyncio.sleep(0.2)
+    assert sid in ctl.calls  # warning beeps, then the caller gets a moment to speak
     for _ in range(40):
         if sid not in ctl.calls:
             break

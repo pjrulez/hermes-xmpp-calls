@@ -127,6 +127,7 @@ async def test_hangup_marker_is_not_spoken_and_ends_call() -> None:
         endpointer=energy_endpointer(),
         barge_in="stop",
         ack_tone_enabled=False,
+        hangup_grace=0,
     )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
@@ -485,3 +486,47 @@ async def test_queue_mode_steers_a_turn_that_is_still_thinking() -> None:
     assert convo._queued == []
     release.set()
     convo.stop()
+
+
+async def test_planned_hangup_warns_and_waits_for_speech() -> None:
+    from xmpp_calls.audio import warn_tone
+
+    async def respond(text: str) -> str:
+        return "x"
+
+    async def hangup() -> None:
+        pass
+
+    convo = Conversation(FakeSpeech(), respond, hangup)
+    assert await convo.grace(0.1) is False  # nobody spoke: time to hang up
+    assert len(convo.playback._buf) == len(warn_tone())  # the warning beeps were queued
+    asyncio.get_running_loop().call_later(0.05, convo._spoke.set)
+    assert await convo.grace(0.5) is True  # spoke in time: the call goes on
+    assert await convo.grace(0) is False  # grace 0 turns the warning off
+
+
+async def test_goodbye_waits_out_the_grace_time_before_hanging_up() -> None:
+    ended: list[bool] = []
+
+    async def respond(text: str) -> str:
+        return "Goodbye, talk to you later. [[hangup]]"
+
+    async def hangup() -> None:
+        ended.append(True)
+
+    convo = Conversation(
+        FakeSpeech(),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        ack_tone_enabled=False,
+        hangup_grace=0.4,
+    )
+    convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
+    await settle(convo)
+    convo.playback.flush()
+    await asyncio.sleep(0.15)
+    assert ended == []  # inside the grace window
+    await asyncio.sleep(0.6)
+    assert ended == [True]

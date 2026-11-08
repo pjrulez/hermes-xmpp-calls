@@ -1,6 +1,7 @@
 import numpy as np
 
-from xmpp_calls.audio import STT_FRAME, Endpointer, SpeechHeld, Utterance
+from tests.helpers import energy_endpointer
+from xmpp_calls.audio import STT_FRAME, Endpointer, SpeechHeld, Utterance, ack_tone
 
 MS = STT_FRAME // 20  # samples per ms at 16 kHz
 
@@ -14,7 +15,7 @@ def quiet(ms: int) -> np.ndarray:
 
 
 def run(*chunks: np.ndarray) -> list:
-    endpointer = Endpointer()
+    endpointer = energy_endpointer()
     events = []
     for chunk in chunks:
         events += endpointer.feed(chunk)
@@ -24,7 +25,7 @@ def run(*chunks: np.ndarray) -> list:
 def test_one_utterance_after_silence() -> None:
     events = run(quiet(400), tone(1000), quiet(900))
     assert [type(e) for e in events] == [SpeechHeld, Utterance]
-    assert len(events[1].pcm) // MS == 1900  # 200 preroll + 1000 speech + 700 silence
+    assert len(events[1].pcm) // MS == 2000  # 200 preroll + 1000 speech + 800 silence
 
 
 def test_click_is_ignored() -> None:
@@ -37,15 +38,31 @@ def test_two_sentences_make_two_utterances() -> None:
 
 
 def test_max_length_cuts_monologue() -> None:
-    endpointer = Endpointer(max_ms=2000)
+    endpointer = energy_endpointer(max_ms=2000)
     events = endpointer.feed(tone(5000))
     assert sum(isinstance(e, Utterance) for e in events) >= 2
 
 
 def test_chunking_does_not_matter() -> None:
     signal = np.concatenate([quiet(400), tone(1000), quiet(900)])
-    endpointer = Endpointer()
+    endpointer = energy_endpointer()
     events = []
     for i in range(0, len(signal), 97):  # odd chunk size
         events += endpointer.feed(signal[i : i + 97])
     assert [type(e) for e in events] == [SpeechHeld, Utterance]
+
+
+def test_default_vad_ignores_steady_noise() -> None:
+    """The old energy gate held the call open on any hum or hiss above its threshold."""
+    rng = np.random.default_rng(1)
+    t = np.arange(16000 * 6)
+    hum = np.sin(2 * np.pi * 100 * t / 16000) * 1500 + rng.normal(0, 200, len(t))
+    fan = np.convolve(rng.normal(0, 800, len(t)), np.ones(40) / 40, "same")
+    for noise in (hum, fan, rng.normal(0, 500, len(t))):
+        assert Endpointer().feed(noise.astype(np.int16)) == []
+
+
+def test_ack_tone_is_short_and_quiet() -> None:
+    tone = ack_tone()
+    assert 3000 < len(tone) < 5000  # about 80 ms at 48 kHz
+    assert np.abs(tone).max() < 8000

@@ -7,7 +7,7 @@ Evidence names the file that must exist before the box is ticked. "Operator" = n
 - [x] R3 (Dino and Conversations done 2026-11-07, Monal before final acceptance) Capture real calls from Dino, Conversations and Monal (logger bot, redacted `propose`, `session-initiate`, caps, termination). Operator. Evidence: `RESEARCH/evidence/conversations-session-initiate.xml`. (`dep-slixmpp-jingle` T1)
 - [x] R4 Review prior art, license terms, reuse decision, choose approach A/B/C/D. Evidence: `RESEARCH/05-approach-decision.md`. (`dep-slixmpp-jingle` T2)
 - [ ] R5 slixmpp 1.15.0 vs 1.17.0 add-on compatibility. Evidence: `RESEARCH/evidence/slixmpp-compat.txt`. (`dep-slixmpp-jingle` T3)
-- [ ] R6 Endpointing comparison on recorded speech. Evidence: `RESEARCH/evidence/endpointing.txt`. (`dep-aiortc-media` T4)
+- [x] R6 Endpointing comparison on recorded speech. Evidence: `RESEARCH/evidence/endpointing.txt`. (`dep-aiortc-media` T4)
 - [ ] R7 Call-path STT/TTS via Hermes provider functions, first-audio latency with `fw_queue`. Evidence: `RESEARCH/evidence/tts-stt-call-path.txt`. (`dep-hermes-call-integration` T1)
 - [ ] R8 Plugin integration points (authorization, injection, reply interception, hooks). Evidence: `RESEARCH/06-plugin-integration.md`. (`dep-hermes-call-integration` T2)
 - [ ] R9 Platform matrix: aiortc/av on Python 3.14 (fw), 3.14 tools python on VMs, 3.11. Evidence: `RESEARCH/evidence/platform-matrix.txt`. (`dep-aiortc-media` T1)

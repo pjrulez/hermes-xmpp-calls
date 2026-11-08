@@ -4,6 +4,7 @@ import asyncio
 import fractions
 import time
 from dataclasses import replace
+from typing import Any
 from xml.etree import ElementTree as ET
 
 import av
@@ -11,11 +12,19 @@ import numpy as np
 from aiortc import RTCConfiguration, RTCPeerConnection
 from aiortc.mediastreams import MediaStreamTrack
 
+from xmpp_calls.audio import Endpointer
 from xmpp_calls.jingle import wire
 from xmpp_calls.jingle.model import Candidate, Content, Jingle
 from xmpp_calls.jingle.sdp import answer_to_content
 
 TONE_HZ = 440
+
+
+def energy_endpointer(**kwargs: Any) -> Endpointer:
+    """Endpointer whose "speech" is anything loud: synthetic tones are not speech to WebRTC."""
+    return Endpointer(
+        is_speech=lambda frame: float(np.sqrt(np.mean(frame.astype(float) ** 2))) > 1000, **kwargs
+    )
 
 
 class Tone(MediaStreamTrack):

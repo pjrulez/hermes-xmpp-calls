@@ -70,6 +70,8 @@ class FakeHost:
     async def ask(self, peer: str, call_id: str, text: str) -> str:
         return "A fine reply that is spoken aloud."
 
+    async def post_text(self, peer: str, text: str) -> None: ...
+
 
 class FakeStanza:
     def __init__(self, xml: ET.Element, sender: str, kind: str = "set") -> None:

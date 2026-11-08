@@ -7,6 +7,7 @@ import av
 import numpy as np
 from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 
+from tests.helpers import energy_endpointer
 from xmpp_calls.audio import OUT_FRAME, OUT_RATE
 from xmpp_calls.conversation import Conversation, Turn
 
@@ -73,7 +74,9 @@ async def test_turn_is_transcribed_answered_and_spoken() -> None:
 
     async def hangup() -> None: ...
 
-    convo = Conversation(speech, respond, hangup)
+    convo = Conversation(
+        speech, respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+    )
     convo.attach(Caller([("quiet", 200), ("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
     assert replies == ["hello there"]
@@ -90,7 +93,9 @@ async def test_empty_transcript_makes_no_turn() -> None:
 
     async def hangup() -> None: ...
 
-    convo = Conversation(FakeSpeech(""), respond, hangup)
+    convo = Conversation(
+        FakeSpeech(""), respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+    )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
     assert called == []
@@ -105,7 +110,9 @@ async def test_hangup_marker_is_not_spoken_and_ends_call() -> None:
     async def hangup() -> None:
         ended.append(True)
 
-    convo = Conversation(speech, respond, hangup)
+    convo = Conversation(
+        speech, respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+    )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
     convo.playback.flush()  # as if playback finished
@@ -123,7 +130,9 @@ async def test_barge_in_flushes_audio_and_notes_heard_fraction() -> None:
 
     async def hangup() -> None: ...
 
-    convo = Conversation(speech, respond, hangup)
+    convo = Conversation(
+        speech, respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+    )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
     assert convo.playback.busy
@@ -153,7 +162,9 @@ async def test_muted_client_still_ends_the_utterance() -> None:
 
     async def hangup() -> None: ...
 
-    convo = Conversation(FakeSpeech(), respond, hangup)
+    convo = Conversation(
+        FakeSpeech(), respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+    )
     convo.attach(Caller([("talk", 1000)], stall=True))
     await asyncio.sleep(1.8)
     convo.stop()
@@ -169,8 +180,89 @@ async def test_slow_agent_gets_a_filler() -> None:
 
     async def hangup() -> None: ...
 
-    convo = Conversation(speech, respond, hangup, filler_after=0.05)
+    convo = Conversation(
+        speech,
+        respond,
+        hangup,
+        filler_after=0.05,
+        endpointer=energy_endpointer(),
+        ack_tone_enabled=False,
+    )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
     assert speech.spoken[0] == "One moment."
     assert speech.spoken[1].startswith("The answer")
+
+
+async def test_pause_mid_thought_is_joined_not_forgotten() -> None:
+    """Two utterances close together, no reply yet: the agent is asked once with both."""
+    sizes: list[int] = []
+
+    class Counting(FakeSpeech):
+        async def transcribe(self, pcm: np.ndarray) -> str:
+            sizes.append(len(pcm))
+            await asyncio.sleep(
+                0.2
+            )  # the first transcription is still running when the second arrives
+            return "both parts"
+
+    replies = []
+
+    async def respond(text: str) -> str:
+        replies.append(text)
+        return "Understood, thank you very much."
+
+    async def hangup() -> None: ...
+
+    convo = Conversation(
+        Counting(), respond, hangup, endpointer=energy_endpointer(), ack_tone_enabled=False
+    )
+    convo.attach(Caller([("talk", 600), ("quiet", 900), ("talk", 600), ("quiet", 1000)]))
+    await settle(convo)
+    assert replies == ["both parts"]
+    assert sizes[-1] > sizes[0] * 1.8  # the last transcription heard both utterances
+
+
+async def test_utterance_end_plays_the_ack_tone() -> None:
+    async def respond(text: str) -> str:
+        await asyncio.sleep(5)
+        return "x"
+
+    async def hangup() -> None: ...
+
+    convo = Conversation(
+        FakeSpeech(), respond, hangup, endpointer=energy_endpointer(), filler_after=60
+    )
+    convo.attach(Caller([("talk", 800), ("quiet", 1000)]))
+    await settle(convo)
+    assert convo.playback.busy
+    assert 3000 < len(convo.playback._buf) < 5000  # just the beep: the agent has not answered
+    convo.stop()
+
+
+async def test_failed_speech_falls_back_to_text() -> None:
+    posted: list[str] = []
+
+    class BrokenTTS(FakeSpeech):
+        async def synthesize(self, text: str) -> np.ndarray:
+            raise RuntimeError("tts down")
+
+    async def respond(text: str) -> str:
+        return "This reply cannot be spoken, sadly."
+
+    async def hangup() -> None: ...
+
+    async def post(text: str) -> None:
+        posted.append(text)
+
+    convo = Conversation(
+        BrokenTTS(),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        ack_tone_enabled=False,
+        fallback_text=post,
+    )
+    convo.attach(Caller([("talk", 800), ("quiet", 1000)]))
+    await settle(convo)
+    assert posted == ["This reply cannot be spoken, sadly."]

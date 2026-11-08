@@ -31,3 +31,12 @@ def test_single_short_reply_stays_whole() -> None:
 def test_hangup_marker() -> None:
     assert split_hangup("Bye now. [[hangup]]") == ("Bye now.", True)
     assert split_hangup("Still here.") == ("Still here.", False)
+
+
+def test_long_first_sentence_is_split_at_a_clause() -> None:
+    text = (
+        "Well, since you asked about the weather this afternoon, I would say it looks clear. Enjoy!"
+    )
+    parts = sentences(text)
+    assert parts[0] == "Well, since you asked about the weather this afternoon,"
+    assert " ".join(parts) == text

@@ -33,10 +33,19 @@ class CallBot(LogBot):
         super().__init__(*args)
         self.controller = CallController(self, DevHost(self.allowed))
         self.controller.install()
+        self.add_event_handler("message", self.on_chat)
 
     async def on_start(self, _event: object) -> None:
         await super().on_start(_event)
         await self.controller.advertise()
+
+    async def on_chat(self, msg: Any) -> None:
+        """Dev trigger for outgoing calls: the allowed user types "call me"."""
+        if msg["from"].bare == self.allowed and msg["body"].strip().lower() == "call me":
+            status = await self.controller.place_call(
+                self.allowed, "Hello. This is the test bot calling you, as you asked."
+            )
+            msg.reply(status).send()
 
     # The controller owns call signaling; the logger's own call handlers step aside.
     async def on_jmi(self, stanza: Any) -> None: ...

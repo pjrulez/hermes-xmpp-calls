@@ -570,3 +570,64 @@ async def test_noise_during_the_hangup_grace_does_not_keep_the_call_open(monkeyp
     loop.call_later(0.05, convo._spoke.set)  # the voice detector fired ...
     loop.call_later(0.1, convo._utterances.put_nowait, False)  # ... but the transcript was empty
     assert await convo.grace(0.3) is False  # so the call still ends
+
+
+async def test_hanging_up_mid_request_still_gets_the_request_handled() -> None:
+    """The caller says something, the agent starts working, they hang up: the work finishes
+    and the answer arrives as text; nothing is spoken."""
+    texts: list[str] = []
+    seen: list[str] = []
+
+    async def respond(text: str) -> str:
+        seen.append(text)
+        await asyncio.sleep(1.0)  # tools running
+        return "Done. The title is changed."
+
+    async def hangup() -> None:
+        pass
+
+    async def post(text: str) -> None:
+        texts.append(text)
+
+    convo = Conversation(
+        FakeSpeech("change the title"),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        ack_tone_enabled=False,
+        fallback_text=post,
+        filler_after=0.05,
+    )
+    convo.attach(Caller([("talk", 600), ("quiet", 1000)], stall=True))
+    await asyncio.sleep(0.4)  # utterance finished, the agent is working
+    assert seen
+    convo.playback.flush()
+    await convo.finish()  # they hang up here
+    assert texts == ["Done. The title is changed."]
+    assert not convo.playback.busy  # nothing was spoken after the hang-up
+
+
+async def test_hanging_up_while_still_talking_handles_what_was_said() -> None:
+    texts: list[str] = []
+
+    async def respond(text: str) -> str:
+        return "Noted."
+
+    async def hangup() -> None:
+        pass
+
+    async def post(text: str) -> None:
+        texts.append(text)
+
+    convo = Conversation(
+        FakeSpeech("remind me tomorrow"),
+        respond,
+        hangup,
+        endpointer=energy_endpointer(),
+        ack_tone_enabled=False,
+        fallback_text=post,
+    )
+    convo.attach(Caller([("talk", 800)], stall=True))  # still speaking when the line drops
+    await asyncio.sleep(0.3)  # the utterance is still open
+    await convo.finish()
+    assert texts == ["Noted."]

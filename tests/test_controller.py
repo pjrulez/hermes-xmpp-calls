@@ -398,3 +398,43 @@ async def test_outgoing_call_to_someone_already_on_a_call_is_said_there() -> Non
     assert len(client.sent) == before  # no second call was proposed
     assert "The result is in." in " ".join(spoken)
     await phone.close()
+
+
+async def test_a_phone_that_stops_ringing_by_itself_is_rung_again(monkeypatch) -> None:
+    import xmpp_calls.controller as module
+
+    monkeypatch.setattr(module, "CLIENT_RING_LIMIT", 0.1)
+    monkeypatch.setattr(module, "MIN_RERING", 0.1)
+    ctl, client = make()
+    ctl.config = CallConfig(ring_timeout=1, ring_attempts=1)
+    task = asyncio.create_task(ctl.place_call("owner@example.org", "Hello"))
+    await asyncio.sleep(0.2)
+    first = str(client.sent[0].xml[0].get("id"))
+    await ctl._on_jmi(proceed(first, "reject"))  # the phone's own ring limit ended
+    await asyncio.sleep(0.1)
+    proposals = [m for m in client.sent if m.kind == "message" and m.xml[0].tag.endswith("propose")]
+    assert len(proposals) == 2  # rung again, not given up
+    assert (await task).startswith("no answer")  # until our own limit
+    assert len(ctl.host.texts) == 1  # one text at the very end  # type: ignore[attr-defined]
+
+
+async def test_hanging_up_does_not_cancel_the_agents_work() -> None:
+    ctl, _, _, phone, _ = await _run_outgoing()
+    sid = next(iter(ctl.calls))
+    done = asyncio.Event()
+
+    async def slow_ask(peer: str, call_id: str, text: str) -> str:
+        await asyncio.sleep(0.4)
+        done.set()
+        return "All done."
+
+    ctl.host.ask = slow_ask  # type: ignore[method-assign]
+    convo = ctl.calls[sid].convo
+    convo._on_utterance = lambda pcm: None  # type: ignore[method-assign]
+    convo._start_text("change the title")
+    await asyncio.sleep(0.05)
+    await ctl.end(sid, None)  # the person hangs up mid-request
+    await asyncio.sleep(0.8)
+    assert done.is_set()
+    assert ("owner@example.org", "All done.") in ctl.host.texts  # type: ignore[attr-defined]
+    await phone.close()

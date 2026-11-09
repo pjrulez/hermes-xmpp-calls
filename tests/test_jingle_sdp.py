@@ -170,3 +170,17 @@ def test_a_flood_of_candidates_is_capped() -> None:
     many = tuple(replace(content.transport.candidates[0], id=str(i)) for i in range(500))
     text = sdp.offer_to_sdp(_with(offer, candidates=many))
     assert text.count("a=candidate:") == sdp.MAX_CANDIDATES
+
+
+def test_boolean_fmtp_values_become_numbers_aiortc_accepts() -> None:
+    """Monal sends Opus flags as true/false; aiortc's parser fails on int('true')."""
+    offer = load("conversations-session-initiate.xml")
+    (content,) = offer.contents
+    opus = next(p for p in content.payloads if p.name.lower() == "opus")
+    flagged = replace(
+        opus, parameters=(("useinbandfec", "true"), ("usedtx", "False"), ("minptime", "10"))
+    )
+    payloads = tuple(flagged if p is opus else p for p in content.payloads)
+    text = sdp.offer_to_sdp(replace(offer, contents=(replace(content, payloads=payloads),)))
+    assert "useinbandfec=1;usedtx=0;minptime=10" in text
+    SessionDescription.parse(text)  # the real aiortc parser used to raise ValueError here

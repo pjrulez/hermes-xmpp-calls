@@ -695,3 +695,56 @@ async def test_waiting_for_dead_media_gives_up() -> None:
     started = time.monotonic()
     await playback.wait_idle(limit=0.3)
     assert time.monotonic() - started < 1.0
+
+
+def _filler_convo(speech, tmp_path, filler="One moment."):
+    async def respond(text: str) -> str:
+        await asyncio.sleep(0.15)
+        return "The answer is long enough to be one sentence."
+
+    async def hangup() -> None: ...
+
+    return Conversation(
+        speech,
+        respond,
+        hangup,
+        filler_after=0.05,
+        filler=filler,
+        filler_cache=tmp_path / "cache",
+        endpointer=energy_endpointer(),
+        barge_in="stop",
+        ack_tone_enabled=False,
+    )
+
+
+async def test_filler_audio_is_made_once_and_reused_across_calls(tmp_path) -> None:
+    for _ in range(2):  # two calls, each with its own Conversation
+        speech = FakeSpeech()
+        convo = _filler_convo(speech, tmp_path)
+        convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
+        await settle(convo)
+        assert speech.spoken.count("One moment.") == (1 if _ == 0 else 0)
+    assert len(list((tmp_path / "cache").glob("filler-*.npy"))) == 1
+
+
+async def test_damaged_filler_file_is_made_again(tmp_path) -> None:
+    speech = FakeSpeech()
+    convo = _filler_convo(speech, tmp_path)
+    convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
+    await settle(convo)
+    (path,) = (tmp_path / "cache").glob("filler-*.npy")
+    path.write_bytes(b"not an array")
+    again = FakeSpeech()
+    convo = _filler_convo(again, tmp_path)
+    convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
+    await settle(convo)
+    assert again.spoken[0] == "One moment."
+
+
+async def test_empty_filler_says_nothing_and_caches_nothing(tmp_path) -> None:
+    speech = FakeSpeech()
+    convo = _filler_convo(speech, tmp_path, filler="")
+    convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
+    await settle(convo)
+    assert speech.spoken[0].startswith("The answer")
+    assert not (tmp_path / "cache").exists()

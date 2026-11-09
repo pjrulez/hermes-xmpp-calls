@@ -12,7 +12,7 @@ Scope: everything the first PR adds. Status: **F** found and fixed, **A** accept
 | 6 | `CALL REQUEST` parsing | Only read from messages by a partner agent that passed authorization; `topic` limited to word characters, `context` to 3000 characters, both expire after 10 minutes. The text reaches the call agent as background: a compromised partner agent could steer the call agent. Partner agents are trusted by configuration: accepted, documented. | A |
 | 7 | Session title | `topic` becomes part of a `/title` command. Control characters and `/` sequences are removed, 60 characters at most. | F |
 | 8 | Partner-agent loop | Two agents answering each other: 4 accepted messages per 10 minutes, gateway status lines neither sent nor acted on, prompt marks the sender as a machine. | F |
-| 9 | Idle and long calls | `max_seconds` (600) and `idle_timeout` (180) end forgotten calls; one call at a time. | F |
+| 9 | Idle and long calls | `max_seconds` (600) and `idle_timeout` (60) end forgotten calls; one call at a time. | F |
 | 10 | Hang-up | Hanging up no longer cancels work in progress; the reply goes to the chat as text (the person's own chat only). | OK |
 | 11 | Dependencies | `aiortc`, `av`, `webrtcvad-wheels` and friends are optional, installed into `vendor/` or the Hermes env, imported only when `calls.enabled`. Licenses reviewed for the plugin fork in `RESEARCH/05-approach-decision.md`. No code copied from GPL, AGPL or MPL projects. | OK |
 | 12 | `plaintext_peers` | Turns OMEMO off for listed peers: opt-in, empty by default, documented as a security trade-off. | A |

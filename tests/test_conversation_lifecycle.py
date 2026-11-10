@@ -11,7 +11,7 @@ import pytest
 from tests.helpers import energy_endpointer
 from tests.test_conversation import Caller, FakeSpeech
 from xmpp_calls.audio import OUT_FRAME, OUT_RATE, Endpointer, PlaybackTrack, Utterance
-from xmpp_calls.conversation import Conversation
+from xmpp_calls.conversation import FILLERS, Conversation
 
 PCM = np.ones(16000, np.int16)
 
@@ -190,7 +190,7 @@ async def test_filler_failure_preserves_the_successful_answer(make_conversation)
 
     class BrokenFiller(SilentSpeech):
         async def synthesize(self, text: str) -> np.ndarray:
-            if text == "One moment.":
+            if text in FILLERS:
                 filler.set()
                 raise RuntimeError("no filler audio")
             return await super().synthesize(text)

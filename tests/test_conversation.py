@@ -2,6 +2,7 @@
 
 import asyncio
 import fractions
+import itertools
 import time
 
 import av
@@ -10,7 +11,7 @@ from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 
 from tests.helpers import energy_endpointer
 from xmpp_calls.audio import OUT_FRAME, OUT_RATE
-from xmpp_calls.conversation import Conversation, Turn
+from xmpp_calls.conversation import FILLERS, Conversation, Turn
 
 
 def frame(pcm: np.ndarray, n: int) -> av.AudioFrame:
@@ -218,7 +219,7 @@ async def test_slow_agent_gets_a_filler() -> None:
     )
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
-    assert speech.spoken[0] == "One moment."
+    assert speech.spoken[0] in FILLERS
     assert speech.spoken[1].startswith("The answer")
 
 
@@ -697,7 +698,7 @@ async def test_waiting_for_dead_media_gives_up() -> None:
     assert time.monotonic() - started < 1.0
 
 
-def _filler_convo(speech, tmp_path, filler="One moment."):
+def _filler_convo(speech, tmp_path, fillers=("One moment.",)):
     async def respond(text: str) -> str:
         await asyncio.sleep(0.15)
         return "The answer is long enough to be one sentence."
@@ -709,7 +710,7 @@ def _filler_convo(speech, tmp_path, filler="One moment."):
         respond,
         hangup,
         filler_after=0.05,
-        filler=filler,
+        fillers=fillers,
         filler_cache=tmp_path / "cache",
         endpointer=energy_endpointer(),
         barge_in="stop",
@@ -743,8 +744,24 @@ async def test_damaged_filler_file_is_made_again(tmp_path) -> None:
 
 async def test_empty_filler_says_nothing_and_caches_nothing(tmp_path) -> None:
     speech = FakeSpeech()
-    convo = _filler_convo(speech, tmp_path, filler="")
+    convo = _filler_convo(speech, tmp_path, fillers=())
     convo.attach(Caller([("talk", 1000), ("quiet", 1000)]))
     await settle(convo)
     assert speech.spoken[0].startswith("The answer")
     assert not (tmp_path / "cache").exists()
+
+
+async def test_fillers_are_picked_at_random_and_never_repeat_back_to_back(tmp_path) -> None:
+    speech = FakeSpeech()
+    convo = _filler_convo(speech, tmp_path, fillers=("One moment.", "Hold on.", "Let me see."))
+    picks = [await _pick(convo) for _ in range(30)]
+    assert set(picks) == {"One moment.", "Hold on.", "Let me see."}
+    assert all(a != b for a, b in itertools.pairwise(picks))
+    # each phrase was synthesized once and saved
+    assert sorted(speech.spoken) == ["Hold on.", "Let me see.", "One moment."]
+    assert len(list((tmp_path / "cache").glob("filler-*.npy"))) == 3
+
+
+async def _pick(convo) -> str:
+    await convo._filler_clip()
+    return convo._last_filler

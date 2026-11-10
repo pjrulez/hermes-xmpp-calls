@@ -5,6 +5,7 @@ devtools/ stays out. Run `python scripts/sync_plugin.py` after changing src/ or 
 `--check` to fail when the copy is stale.
 """
 
+import json
 import re
 import shutil
 import sys
@@ -18,14 +19,10 @@ CAPTURES = ROOT / "RESEARCH" / "evidence" / "jmi-jingle-captures"
 NOT_PORTED = {"__init__.py", "test_env.py", "test_layers.py", "test_leaks.py"}
 
 
-PRIVATE = [  # real names in the dev captures and tests become neutral ones in the plugin
-    (r"prosody\.example\.net", "xmpp.example.org"),
-    (r"turn\.example\.net", "turn.example.org"),
-    (r"example\.net", "example.org"),
-    (r"example", "example"),
-    (r"\balice\b", "bob"),
-    (r"\bowner\b", "alice"),
-]
+PRIVATE_NAMES = (
+    ROOT / ".scratch" / "private_names.json"
+)  # git-ignored [[pattern, replacement], ...]
+PRIVATE = json.loads(PRIVATE_NAMES.read_text()) if PRIVATE_NAMES.exists() else []
 
 
 def neutral(text: str) -> str:

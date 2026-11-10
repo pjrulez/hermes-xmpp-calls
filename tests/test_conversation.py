@@ -7,6 +7,7 @@ import time
 
 import av
 import numpy as np
+import pytest
 from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 
 from tests.helpers import energy_endpointer
@@ -765,3 +766,54 @@ async def test_fillers_are_picked_at_random_and_never_repeat_back_to_back(tmp_pa
 async def _pick(convo) -> str:
     await convo._filler_clip()
     return convo._last_filler
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        b"",
+        b"PK\x03\x04 not an npy",
+        b"\x93NUMPY\x01\x00v\x00{'descr': '<i2', 'fortran_order': False, 'shape': (2**60,), }"
+        + b" " * 20
+        + b"\n",
+    ],
+    ids=["empty", "zip", "absurd-shape"],
+)
+async def test_any_damaged_filler_file_is_replaced(tmp_path, damage) -> None:
+    speech = FakeSpeech()
+    convo = _filler_convo(speech, tmp_path)
+    await convo._filler_clip()
+    (path,) = (tmp_path / "cache").glob("filler-*.npy")
+    path.write_bytes(damage)
+    again = FakeSpeech()
+    convo = _filler_convo(again, tmp_path)
+    await convo._filler_clip()
+    assert again.spoken == ["One moment."]
+    assert Conversation._load_clip(path) is not None  # rewritten, no temp files left
+    assert [p.name for p in (tmp_path / "cache").iterdir()] == [path.name]
+
+
+async def test_a_ready_answer_does_not_wait_for_a_slow_filler(tmp_path) -> None:
+    class SlowFiller(FakeSpeech):
+        async def synthesize(self, text: str) -> np.ndarray:
+            if text == "One moment.":
+                await asyncio.sleep(2)
+            return await super().synthesize(text)
+
+    async def respond(text: str) -> str:
+        await asyncio.sleep(0.1)
+        return "ok"
+
+    async def hangup() -> None: ...
+
+    convo = Conversation(
+        SlowFiller(),
+        respond,
+        hangup,
+        filler_after=0.05,
+        fillers=("One moment.",),
+        endpointer=energy_endpointer(),
+    )
+    started = time.monotonic()
+    assert await convo._answer("hi") == "ok"
+    assert time.monotonic() - started < 1

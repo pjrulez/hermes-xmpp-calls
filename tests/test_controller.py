@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 import slixmpp
+from slixmpp.exceptions import IqError
 
 from tests.helpers import make_offer
 from xmpp_calls.controller import JMI, CallConfig, CallController
@@ -495,3 +496,30 @@ async def test_a_call_whose_media_fails_is_ended() -> None:
     await media.on_lost()
     assert sid not in ctl.calls
     await phone.close()
+
+
+async def test_error_reply_to_our_setup_iq_ends_the_call() -> None:
+    ctl, _client = make()
+    ended: list[tuple[str, str | None]] = []
+
+    async def end(sid: str, reason: str | None, notify: bool = False) -> None:
+        ended.append((sid, reason))
+
+    ctl.end = end  # type: ignore[method-assign]
+    ctl.calls["s1"] = object()  # type: ignore[assignment]
+    future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+
+    class Iq:
+        def send(self) -> asyncio.Future[None]:
+            return future
+
+    ctl._send(Iq(), "s1")
+
+    class Refused(IqError):
+        def __init__(self) -> None:  # the real one needs a full error stanza
+            Exception.__init__(self, "service-unavailable")
+
+    future.set_exception(Refused())
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert ended == [("s1", "connectivity-error")]

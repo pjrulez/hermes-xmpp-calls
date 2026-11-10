@@ -184,3 +184,14 @@ def test_boolean_fmtp_values_become_numbers_aiortc_accepts() -> None:
     text = sdp.offer_to_sdp(replace(offer, contents=(replace(content, payloads=payloads),)))
     assert "useinbandfec=1;usedtx=0;minptime=10" in text
     SessionDescription.parse(text)  # the real aiortc parser used to raise ValueError here
+
+
+@pytest.mark.parametrize("name", ["x=1;stereo", "", "a b", "\uff58"])
+def test_fmtp_names_that_could_split_or_inject_are_refused(name: str) -> None:
+    offer = load("conversations-session-initiate.xml")
+    (content,) = offer.contents
+    opus = next(p for p in content.payloads if p.name.lower() == "opus")
+    bad = replace(opus, parameters=((name, "1"),))
+    payloads = tuple(bad if p is opus else p for p in content.payloads)
+    with pytest.raises(JingleError):
+        sdp.offer_to_sdp(replace(offer, contents=(replace(content, payloads=payloads),)))

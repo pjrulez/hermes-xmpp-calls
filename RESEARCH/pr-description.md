@@ -1,6 +1,6 @@
 # PR: optional live audio calls (Jingle RTP) and agent-initiated calls
 
-Target: `fastfinge/hermes-xmpp-plugin` `main`. Head: `pjrulez:xmpp-calls-pr` (3 commits on top of `f5f25fc`).
+Submitted as https://github.com/fastfinge/hermes-xmpp-plugin/pull/15 (head `pjrulez:xmpp-calls-pr`, 3 commits on top of `f5f25fc`).
 
 ## What this adds
 

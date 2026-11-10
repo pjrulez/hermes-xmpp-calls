@@ -7,6 +7,7 @@ from contextlib import suppress
 
 import numpy as np
 import pytest
+import pytest_asyncio
 
 from tests.helpers import energy_endpointer
 from tests.test_conversation import Caller, FakeSpeech
@@ -27,7 +28,7 @@ async def spins() -> None:
         await asyncio.sleep(0)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def make_conversation():
     conversations = []
 

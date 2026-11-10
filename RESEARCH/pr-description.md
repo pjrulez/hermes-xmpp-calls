@@ -171,10 +171,13 @@ plugin.
 
 ## Testing
 
-- Plugin suite: 592 passed, 9 skipped on Python 3.14; the 179 engine tests are skipped
-  automatically when the optional dependencies are missing.
-- On Python 3.13 the same suite passes except two `test_outgoing_voice_serialization` cases that
+- Run exactly as the repository CI does (`pytest tests/ -q -W error`, upstream's pinned
+  dependencies, standalone checkout): 592 passed, 9 skipped on Python 3.14. Without the optional
+  call dependencies: 359 passed, 18 skipped (the engine tests skip themselves).
+- On Python 3.13 the same run passes except two `test_outgoing_voice_serialization` cases that
   fail identically on current `main` (not touched by this PR).
+- Nothing in `requirements.txt` or `requirements-dev.txt` is changed; the new
+  `requirements-calls.txt` is only for the optional call dependencies.
 - Live: calls with Conversations (Android), Dino (Linux) and Monal (iOS) to a bot on three hosts, including
   incoming, outgoing, hang-up in the middle of a request, no-answer fallback to text, 60 s idle
   hang-up, and an agent-initiated call started by a hand-off message from another agent. 50 consecutive calls leave file descriptors, threads and tasks

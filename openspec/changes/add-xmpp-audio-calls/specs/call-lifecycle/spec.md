@@ -73,3 +73,23 @@ Transcripts and replies SHALL be logged only as word counts unless `log_transcri
 #### Scenario: Default log
 - **WHEN** a caller says three words
 - **THEN** the log shows "caller: 3 words" and not the words
+
+### Requirement: Call time limit with spoken heads-up (proposed, not implemented)
+A call SHALL end when it has lasted `max_seconds` (default 600), measured from acceptance. Thirty seconds before that moment the agent SHALL say, once, a short spoken notice that the call will end in thirty seconds. If `max_seconds` is 30 or less, no notice SHALL be spoken. Nothing SHALL extend the limit: not the caller's speech, not an agent tool, not any per-call option. A longer call requires a larger `max_seconds` in the configuration and a gateway restart. The notice SHALL NOT interrupt a sentence in progress, and SHALL NOT be spoken after the caller has hung up. When the limit is reached the call SHALL end as it does today, and the requirement "Hanging up does not cancel the request" SHALL apply.
+
+#### Scenario: Notice before the limit
+- **WHEN** a call has lasted `max_seconds` minus thirty seconds
+- **THEN** the agent says once that the call will end in thirty seconds, after the sentence it is speaking
+
+#### Scenario: Caller tries to extend
+- **WHEN** the caller asks for more time during the last thirty seconds
+- **THEN** the call still ends at `max_seconds`
+
+#### Scenario: Short limit
+- **WHEN** `max_seconds` is 30 or less
+- **THEN** no notice is spoken and the call ends at `max_seconds`
+
+#### Scenario: Request in progress at the limit
+- **WHEN** the limit is reached while the agent is still working on a request
+- **THEN** the call ends and the answer arrives as text
+

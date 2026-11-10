@@ -29,3 +29,5 @@ Evidence names the file that must exist before the box is ticked. "Operator" = n
 - [ ] B11 Rollout change for mad and django (separate change, needs VM Python decision).
 
 - [ ] B12 Final release gate for later additions (see `specs/call-lifecycle`, `specs/agent-collaboration`, and `specs/lifecycle-hardening`): hang-up grace and beeps, request completion after hang-up, recap, missed-call text, session titles, ringing, `xmpp_message`, partner guards and OMEMO key safety. Offline security/lifecycle reviews and the leak loop are recorded in `RESEARCH/security-review.md` and `RESEARCH/lifecycle-review.md`; README and CHANGELOG describe the implementation. Refresh the separate PR branch from the final verified tree, obtain operator approval of deployment steps, retest the deployed build, and obtain exact PR-text approval before publication.
+
+- [ ] B13 Spoken 30-second heads-up before `max_seconds` (see `specs/call-lifecycle`, requirement "Call time limit with spoken heads-up"). Specified only; deliberately not implemented in the first plugin PR. Not extendable by design.

@@ -3,6 +3,8 @@ name = "hermes-xmpp-calls"
 version = "0.0.0"
 description = "Live XMPP audio calls for Hermes Agent (Jingle RTP + aiortc), developed for the hermes-xmpp-plugin fork."
 requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "slixmpp>=1.15,<2",
     "aiortc>=1.16,<2",

@@ -6,7 +6,10 @@ Audio stays on our own stack: Whisper (STT) and PocketTTS (TTS) on `fw` through 
 
 Scope: a private Prosody on the tailnet. Public Internet deployment is out of scope. Test clients: Dino (Linux), Conversations (Android), Monal (iOS).
 
-Status: **research done, specification drafted, implementation starting.**
+Status: **implemented and in daily use; the plugin pull request is in review preparation.**
+
+## About this repository
+This is the development workspace for live audio calls in [`hermes-xmpp-plugin`](https://github.com/pjrulez/hermes-xmpp-plugin). The call engine in `src/xmpp_calls/` is copied into that plugin as `calls/` (with its tests) by `scripts/sync_plugin.py`; the plugin, not this repository, is what gets installed and what is proposed upstream. This repository keeps the research notes, OpenSpec change records, security and lifecycle reviews, and the evidence behind them. Jingle and RTP signalling were written from the XEPs; no code was copied from GPL, AGPL or MPL projects (see `RESEARCH/05-approach-decision.md`).
 
 ## Layout
 - `RESEARCH/` verified findings, open questions, dependency options, evidence scripts.

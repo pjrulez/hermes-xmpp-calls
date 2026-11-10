@@ -51,7 +51,7 @@ xmpp:
     enabled: false          # master switch
     allowed_users: []       # who may call and be called; empty = every xmpp.allowed_users JID
                             # except plaintext_peers and agent_peers
-    max_seconds: 600        # hang up after this long
+    max_seconds: 600        # hard limit: the call ends this long after it was accepted
     greeting: "Hi, I'm here. What can I do for you?"   # "" = silence (incoming calls)
     silence_ms: 800         # pause that ends your turn (raise to 1000-1500 if you get cut off)
     vad_level: 2            # 0-3 noise rejection; higher ignores more background noise
@@ -85,6 +85,9 @@ What the less obvious ones do:
   respected as a refusal). With the default of one attempt, a call nobody picks up ends as a text
   message containing what the agent wanted to say; when the person calls back, the agent knows why
   it called.
+- `max_seconds`: the call ends exactly then, with no warning and nothing that extends it; raise
+  the value for longer calls. (A spoken 30-second heads-up is specified in the development
+  repository but deliberately not part of this PR.)
 - `hangup_grace`: when the agent plans to hang up (goodbye, or `hang_up_after` in the tool), it
   plays two falling beeps and waits this long; speaking cancels the hang-up.
 - `log_transcripts`: off by default so call content does not land in logs.

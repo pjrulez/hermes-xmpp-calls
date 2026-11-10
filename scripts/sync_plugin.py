@@ -16,7 +16,7 @@ SRC, DST = ROOT / "src" / "xmpp_calls", ROOT / "plugin" / "calls"
 SKIP = {"devtools", "__pycache__"}
 TESTS, TESTS_DST = ROOT / "tests", ROOT / "plugin" / "tests" / "calls_engine"
 CAPTURES = ROOT / "RESEARCH" / "evidence" / "jmi-jingle-captures"
-NOT_PORTED = {"__init__.py", "test_env.py", "test_layers.py", "test_leaks.py"}
+NOT_PORTED = {"__init__.py", "conftest.py", "test_env.py", "test_layers.py", "test_leaks.py"}
 
 
 PRIVATE_NAMES = (

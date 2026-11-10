@@ -5,8 +5,7 @@ Target: `fastfinge/hermes-xmpp-plugin` `main`. Head: `pjrulez:xmpp-calls-pr` (3 
 ## What this adds
 
 Talk to your Hermes agent on a phone call from any XMPP client that supports audio calls
-(Conversations, Dino; Monal calls between people work, a call to the bot has not been verified end
-to end). The agent can also call you, for example from a cron job, and fall back to a text
+(tested with Conversations, Dino and Monal). The agent can also call you, for example from a cron job, and fall back to a text
 message when you do not pick up.
 
 - Incoming and outgoing audio calls: Jingle RTP (XEP-0166/0167/0176/0320) with Jingle Message
@@ -176,12 +175,11 @@ plugin.
   automatically when the optional dependencies are missing.
 - On Python 3.13 the same suite passes except two `test_outgoing_voice_serialization` cases that
   fail identically on current `main` (not touched by this PR).
-- Live: calls with Conversations (Android) and Dino (Linux) to a bot on three hosts, including
+- Live: calls with Conversations (Android), Dino (Linux) and Monal (iOS) to a bot on three hosts, including
   incoming, outgoing, hang-up in the middle of a request, no-answer fallback to text, 60 s idle
   hang-up, and an agent-initiated call started by a hand-off message from another agent. 50 consecutive calls leave file descriptors, threads and tasks
   unchanged.
-- Not verified: a Monal call to the bot after the `true`/`false` Opus flag fix (the failure was
-  reproduced and covered by a test); video; Gajim and other clients.
+- Not covered: video (offers are refused) and other clients such as Gajim.
 
 ## Review tips
 

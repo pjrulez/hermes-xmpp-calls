@@ -277,20 +277,20 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiortc", specifier = ">=1.16,<2" },
-    { name = "av", specifier = ">=19" },
-    { name = "numpy", specifier = ">=2" },
+    { name = "av", specifier = ">=19.0.2" },
+    { name = "numpy", specifier = ">=2.5.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "slixmpp", specifier = ">=1.15,<2" },
+    { name = "slixmpp", specifier = ">=1.17,<2" },
     { name = "webrtcvad-wheels", specifier = ">=2.0.14.post1" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "prek", specifier = ">=0.3" },
-    { name = "pyrefly", specifier = ">=0.60" },
-    { name = "pytest", specifier = ">=9" },
-    { name = "pytest-asyncio", specifier = ">=1" },
-    { name = "ruff", specifier = ">=0.15" },
+    { name = "prek", specifier = ">=0.5.10" },
+    { name = "pyrefly", specifier = ">=1.4.1" },
+    { name = "pytest", specifier = ">=9.2.0" },
+    { name = "pytest-asyncio", specifier = ">=1.4.1" },
+    { name = "ruff", specifier = ">=0.17.4" },
 ]
 
 [[package]]

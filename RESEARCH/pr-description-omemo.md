@@ -23,6 +23,16 @@ All of it is about not destroying an OMEMO identity, and none of it needs calls.
 4. **`xmpp.plaintext_peers`** (`XMPP_PLAINTEXT_PEERS`): bare JIDs that never get OMEMO-encrypted
    messages; empty by default. For a trusted partner agent that cannot do OMEMO.
 
+## Existing stores keep working: no conversion
+
+The file format is unchanged: still one JSON object of key to value, written with `indent=2`. A
+store written by the previous version loads as it is, and the previous version can read one written
+by this version, so going back is possible too. What is new around the file: its mode is set to 0600
+on load, a `<file>.lock` file sits next to it while a process uses it, and a `<file>.tmp` exists for
+an instant while it is written. A test writes a store the old way, loads it, saves, and checks the
+content, the mode and the files left in the directory. Copying the store file before the first start
+costs nothing if you want a backup.
+
 ## Behaviour change to be aware of
 
 An unreadable or corrupt store now stops OMEMO from starting (logged as an error) instead of
@@ -31,8 +41,8 @@ start over.
 
 ## Testing
 
-Same CI-style run as #15 (`pytest tests/ -q -W error`, upstream pins): 600 passed, 9 skipped on
-3.14; 367 passed, 18 skipped without the call packages. Tests cover the lock, atomic and private
+Same CI-style run as #15 (`pytest tests/ -q -W error`, upstream pins): 487 passed, 9 skipped on
+3.14; 266 passed, 18 skipped without the call packages. Tests cover the lock, atomic and private
 writes, an unreadable store never being overwritten, a second process being refused, a
 world-readable key file being locked down, two storages for one file, symlinked stores, the
 simulated Windows lock, the device-list refresh and the plaintext peers.

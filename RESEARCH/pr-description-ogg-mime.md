@@ -1,9 +1,11 @@
 Title: fix(voice): fall back to the voice MIME table when the system has no mime.types
 
-`mimetypes.guess_type()` reads the system `/etc/mime.types`. Python before 3.14 does not know
-`.ogg` without it, so on a minimal host or container (no `mime.types`) `send_voice` and
-`_upload_and_send` uploaded without a content type. The slot then carries no type, and servers
-tend to store it as `application/octet-stream`, which some clients will not play inline.
+`mimetypes.guess_type()` reads the system `/etc/mime.types`. Without that file Python 3.13 does not
+know `.ogg`, `.oga` or `.m4a` (3.14 still misses `.oga`), so on a minimal host or container
+`send_voice` and `_upload_and_send` uploaded without a content type. The slot then carries no type,
+and servers tend to store it as `application/octet-stream`, which some clients (Monal, for
+example) will not play inline. Hosts without the file are common: NixOS and the stock Alpine,
+Debian/Ubuntu (including `python:3.13-slim`), Fedora and Arch container images.
 
 The adapter already has `_VOICE_EXT_MIME` (`.ogg`, `.oga`, `.opus`, `.m4a` ...). The fix is a small
 helper, `_guess_content_type(path)`: `mimetypes` first, the table when it finds nothing. Both

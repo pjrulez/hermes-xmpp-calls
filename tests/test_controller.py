@@ -289,7 +289,7 @@ async def _limited_call(
 
 
 async def _wait_until_gone(ctl: CallController, sid: str) -> None:
-    for _ in range(100):
+    for _ in range(400):  # the goodbye is 3 s of audio that drains in real time
         if sid not in ctl.calls:
             return
         await asyncio.sleep(0.05)

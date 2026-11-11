@@ -102,6 +102,14 @@ What the less obvious ones do:
   that sound instead (any file PyAV reads, cut at 5 seconds, `~` and absolute paths work, a
   relative one is looked up in the Hermes home). Nothing ships with the plugin and there is no list
   of sounds in Hermes. A file that cannot be read logs a warning and the built-in beep plays.
+  Example (`ffmpeg -f lavfi -i "sine=frequency=1200:duration=0.15" ~/.hermes/sounds/chime.wav`
+  makes a chime):
+
+  ```yaml
+  calls:
+    ack_tone: ~/.hermes/sounds/chime.wav   # instead of the built-in beep
+    warn_tone: false                       # no falling beeps (hangup_grace still waits, silent)
+  ```
 - `ring_timeout`, `ring_attempts`, `ring_pause`: phones stop ringing after about half a minute by
   themselves, so the plugin rings again until `ring_timeout` is up (a quick rejection is
   respected as a refusal). With the default of one attempt, a call nobody picks up ends as a text
@@ -147,7 +155,7 @@ xmpp:
 xmpp:
   allowed_users: [sam@example.org, hermes-phone@example.org]
   agent_peers: [hermes-phone@example.org]
-  calls: {enabled: true}                   # only so the worker gets xmpp_message
+  # no calls section: the worker neither places nor receives calls; xmpp_message works without it
 ```
 
 A cron job on the worker sends the phone agent a message that starts with `CALL REQUEST` and a
@@ -217,9 +225,11 @@ plugin.
 - Nothing in `requirements.txt` or `requirements-dev.txt` is changed.
 - `call_packages.provide()` is unit-tested (environment, `vendor/` fallback, failure, Python mismatch)
   and was run for real against Hermes' `pm`: on x86_64 (a gateway's first start with calls on built
-  the environment in 8 s, then a call worked) and on aarch64 (two Ubuntu VMs, built in 17-20 s,
-  about 250 MB; the cold build there is why the first-start wait is 25 s and not shorter). In both
-  cases aiortc came from the new environment and Hermes' own av and numpy were used.
+  the environment in 8 s, then a call worked) and on aarch64 (two Ubuntu VMs: 17-20 s from a cold download cache in a
+  throwaway home, which is why the first-start wait is 25 s and not shorter; the real gateway
+  restarts then logged "preparing the call packages environment" and "audio calls enabled" 5 s
+  (django) and 7 s (mad) apart). In all cases aiortc came from the new environment and Hermes' own
+  av and numpy were used.
 - Live: calls with Conversations (Android), Dino (Linux), Monal (iOS) and Monocles Chat (Android) to a bot on three hosts, including
   incoming, outgoing, hang-up in the middle of a request, no-answer fallback to text, 60 s idle
   hang-up, and an agent-initiated call started by a hand-off message from another agent. 50 consecutive calls leave file descriptors, threads and tasks

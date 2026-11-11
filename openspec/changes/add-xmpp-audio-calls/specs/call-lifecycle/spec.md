@@ -74,7 +74,7 @@ Transcripts and replies SHALL be logged only as word counts unless `log_transcri
 - **WHEN** a caller says three words
 - **THEN** the log shows "caller: 3 words" and not the words
 
-### Requirement: Call time limit with spoken heads-up (proposed, not implemented)
+### Requirement: Call time limit with spoken heads-up
 A call SHALL end when it has lasted `max_seconds` (default 600), measured from acceptance. Thirty seconds before that moment the agent SHALL say, once, a short spoken notice that the call will end in thirty seconds. If `max_seconds` is 30 or less, no notice SHALL be spoken. Nothing SHALL extend the limit: not the caller's speech, not an agent tool, not any per-call option. A longer call requires a larger `max_seconds` in the configuration and a gateway restart. The notice SHALL NOT interrupt a sentence in progress, and SHALL NOT be spoken after the caller has hung up. When the limit is reached the call SHALL end as it does today, and the requirement "Hanging up does not cancel the request" SHALL apply.
 
 #### Scenario: Notice before the limit
@@ -93,3 +93,13 @@ A call SHALL end when it has lasted `max_seconds` (default 600), measured from a
 - **WHEN** the limit is reached while the agent is still working on a request
 - **THEN** the call ends and the answer arrives as text
 
+### Requirement: Call sessions are configurable
+A call SHALL run in a Hermes session of its own, never in the person's text chat session. `session` SHALL be `per_call` (default: a new session for every call) or `per_peer` (one persistent session per person shared by all their calls); any other value SHALL log a warning and mean `per_call`. `session_title` SHALL be a template over `direction`, `name`, `jid`, `time`, `date` and `topic`; a template that names another field SHALL be refused with a warning and the default for the mode used. A `per_peer` session SHALL be re-titled only when the rendered title changes.
+
+#### Scenario: One session per person
+- **WHEN** `session` is `per_peer` and the same person calls twice
+- **THEN** both calls use the same session and the agent sees the first call's history in the second
+
+#### Scenario: Unusable title template
+- **WHEN** `session_title` contains `{nope}`
+- **THEN** a warning is logged and the session gets the default title

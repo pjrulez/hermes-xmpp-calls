@@ -87,8 +87,11 @@ class HermesCallHost:
     turn is pending for that chat. Progress messages and anything else go to the chat as usual.
     """
 
-    def __init__(self, adapter: Any, callers: frozenset[str] = frozenset()) -> None:
+    def __init__(
+        self, adapter: Any, callers: frozenset[str] = frozenset(), session: str = "per_call"
+    ) -> None:
         self.adapter = adapter
+        self.session = session  # "per_call": a Hermes session per call; "per_peer": one per person
         self.callers = callers  # who may call or be called; empty: every allowed user
         self.speech = HermesSpeech()
         self._pending: dict[str, _Turn] = {}
@@ -142,9 +145,11 @@ class HermesCallHost:
                 del self._pending[peer]
 
     def _source(self, peer: str, call_id: str) -> Any:
-        # A thread id gives every call its own Hermes session, listed with its full history.
+        # A thread id keeps the calls out of the person's text chat session: one thread per call,
+        # or one shared thread for all their calls. Either way the session lists its full history.
+        thread = "calls" if self.session == "per_peer" else f"call-{call_id}"
         return self.adapter.build_source(
-            chat_id=peer, chat_type="dm", user_id=peer, user_name=None, thread_id=f"call-{call_id}"
+            chat_id=peer, chat_type="dm", user_id=peer, user_name=None, thread_id=thread
         )
 
     async def steer(self, peer: str, call_id: str, text: str) -> bool:

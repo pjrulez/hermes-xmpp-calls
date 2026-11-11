@@ -34,7 +34,8 @@ them with `pm.ensure_environment()` under `<hermes root>/environments/hermes-xmp
 so `hermes update` (which re-syncs the main venv) does not prune it, and a plugin update leaves it
 alone. Its `site-packages` is appended to `sys.path`, so Hermes' own numpy/av/cryptography win; it
 is refused when its Python differs from Hermes'. `av` follows aiortc's own range (`>=14`).
-If `pm.ensure_environment` is missing (older Hermes) or lazy installs are off (Docker), a
+If the first build takes longer than 15 s (the gateway gives `connect()` 30 s), chat starts anyway
+and calls come with the next reconnect or restart. If `pm.ensure_environment` is missing (older Hermes) or lazy installs are off (Docker), a
 `vendor/` folder next to the plugin is used instead, and the log prints the command to fill it.
 
 ## Configuration
@@ -182,8 +183,8 @@ plugin.
 
 - Run as the repository CI does (`pytest tests/ -q -W error`, upstream's pinned dependencies,
   standalone checkout, `requirements-calls.txt` installed and `XMPP_REQUIRE_CALL_DEPS=1`, so a missing call
-  package fails the run instead of silently skipping the 179 engine tests): 585 passed, 9
-  skipped on Python 3.14. Without the call packages: 360 passed, 18 skipped.
+  package fails the run instead of silently skipping the 179 engine tests): 587 passed, 9
+  skipped on Python 3.14. Without the call packages: 362 passed, 18 skipped.
 - The workflow installs `requirements-calls.txt` and sets `XMPP_REQUIRE_CALL_DEPS=1`.
 - Python 3.13 on a machine without `/etc/mime.types`: two `test_outgoing_voice_serialization`
   cases fail the same way on current `main`: 3.13's `mimetypes` only knows `.ogg` from the system

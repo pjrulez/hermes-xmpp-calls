@@ -31,8 +31,8 @@ start over.
 
 ## Testing
 
-Same CI-style run as #15 (`pytest tests/ -q -W error`, upstream pins): 598 passed, 9 skipped on
-3.14; 365 passed, 18 skipped without the call packages. Tests cover the lock, atomic and private
+Same CI-style run as #15 (`pytest tests/ -q -W error`, upstream pins): 600 passed, 9 skipped on
+3.14; 367 passed, 18 skipped without the call packages. Tests cover the lock, atomic and private
 writes, an unreadable store never being overwritten, a second process being refused, a
 world-readable key file being locked down, two storages for one file, symlinked stores, the
 simulated Windows lock, the device-list refresh and the plaintext peers.

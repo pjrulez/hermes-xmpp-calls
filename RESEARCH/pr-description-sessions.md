@@ -1,7 +1,7 @@
 Title: feat(calls): session modes (per_call, per_peer), session_title and a spoken time-limit notice
 
-Draft, stacked on #15 (calls) and the OMEMO PR; until they are merged the diff also shows their
-commits. This PR is the last commit only: `feat(calls): session modes ...`.
+Draft. Based on current `main` and independent of the OMEMO PR (#16) and the ogg-mime PR (#17). One
+commit: `feat(calls): session modes ...`.
 
 ## What it changes
 
@@ -50,4 +50,4 @@ The README has the full comparison (section "Sessions").
 
 `render_title` table (fields, whitespace, injection, bad templates), per-peer titling only when
 the title changes, adapter parsing of both keys, thread id per mode, and a controller test that
-the heads-up is spoken once and the call still ends on time. Counts with this PR: 490 passed and 9 skipped on 3.14 (all call packages installed), 266 passed without them.
+the heads-up is spoken once and the call still ends on time. Counts with this PR: 477 passed and 9 skipped on 3.14 (call packages installed), 261 passed without them. On 3.13 the two `test_voice_wire_contains_sfs...` cases fail on a host without `/etc/mime.types`, which #17 fixes.

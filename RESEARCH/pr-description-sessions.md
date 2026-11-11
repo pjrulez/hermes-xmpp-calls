@@ -1,8 +1,7 @@
 Title: feat(calls): session modes (per_call, per_peer), session_title and a spoken time-limit notice
 
 Draft, stacked on #15 (calls) and the OMEMO PR; until they are merged the diff also shows their
-commits. This PR is the last commit only: `feat(calls): session modes ...`. Bumps the plugin to
-0.5.1.
+commits. This PR is the last commit only: `feat(calls): session modes ...`.
 
 ## What it changes
 
@@ -20,7 +19,7 @@ commits. This PR is the last commit only: `feat(calls): session modes ...`. Bump
    the rendered title changes.
 3. **A spoken heads-up**: 30 s before `max_seconds` the call says once "This call will end in
    thirty seconds." It is queued behind the sentence being spoken, never delays the cut, and is
-   skipped for limits of 30 s or less and for `max_seconds: false`. Nothing extends the limit.
+   skipped for very short limits and for `max_seconds: false`. Nothing extends the limit.
    (This was specified in the first PR and left out of it.)
 
 ```yaml

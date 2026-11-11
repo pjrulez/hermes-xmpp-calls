@@ -328,6 +328,7 @@ async def test_the_call_ends_at_max_seconds_and_no_limit_means_no_end(monkeypatc
 
 async def test_the_call_says_once_that_it_will_end_and_still_ends_on_time(monkeypatch: Any) -> None:
     monkeypatch.setattr(controller, "HEADS_UP_S", 0.4)
+    monkeypatch.setattr(controller, "HEADS_UP_LEAD_S", 0.2)
     ctl, sid, spoken, phone = await _limited_call(monkeypatch, idle_timeout=0, max_seconds=1)
     started = asyncio.get_running_loop().time()
     await asyncio.wait_for(ctl._limit(sid), 5)

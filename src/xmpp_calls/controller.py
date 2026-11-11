@@ -54,6 +54,7 @@ TITLE_DEFAULTS = {
 }
 HEADS_UP_S = 30.0  # the call says once that it ends this long before max_seconds
 HEADS_UP = "This call will end in thirty seconds."
+HEADS_UP_LEAD_S = 3.0  # speaking it takes a while; start early so "thirty" is true when it is said
 IDLE_GOODBYE = "I do not hear anyone, so I am hanging up. Call me back any time."
 CLIENT_RING_LIMIT = 25.0  # a "reject" after ringing this long is the phone timing out
 MIN_RERING = 5.0  # do not ring again with less than this left of the ring time
@@ -775,16 +776,18 @@ class CallController:
 
     async def _limit(self, sid: str) -> None:
         """Enforce the call time limit; meanwhile log RTP counts every 10 s (is audio flowing?).
-        `HEADS_UP_S` before the limit the call says so once. Nothing extends the limit."""
+        `HEADS_UP_S` (plus the lead) before the limit the call says so once. Nothing extends the
+        limit."""
         loop = asyncio.get_running_loop()
         started = loop.time()
         limit = self.config.max_seconds
         deadline = started + limit if limit else None
-        warned = not limit or limit <= HEADS_UP_S  # a short limit gets no notice
+        notice_at = HEADS_UP_S + HEADS_UP_LEAD_S  # seconds left when the notice is queued
+        warned = not limit or limit <= notice_at  # a very short limit gets no notice
         while deadline is None or (left := deadline - loop.time()) > 0:
             step = TICK_S if deadline is None else min(TICK_S, left)
-            if not warned and deadline is not None and left > HEADS_UP_S:
-                step = min(step, left - HEADS_UP_S)  # wake up when the notice is due
+            if not warned and deadline is not None and left > notice_at:
+                step = min(step, left - notice_at)  # wake up when the notice is due
             await asyncio.sleep(step)
             call = self.calls.get(sid)
             if call is not None:
@@ -797,7 +800,7 @@ class CallController:
                     await call.convo.say(IDLE_GOODBYE)
                     await call.convo.playback.wait_idle()
                     break
-                if not warned and deadline is not None and deadline - loop.time() <= HEADS_UP_S:
+                if not warned and deadline is not None and deadline - loop.time() <= notice_at:
                     warned = True
                     logging.info("calls: %s ends in %d s, saying so", sid[:8], HEADS_UP_S)
                     # its own task: queued behind the sentence being spoken, never waited for here

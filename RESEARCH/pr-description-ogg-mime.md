@@ -15,4 +15,4 @@ Tests: one new test forces `mimetypes.guess_type` to return nothing and checks `
 unknown extension. This also makes the two existing
 `test_voice_wire_contains_sfs_and_matching_legacy_url` cases pass on Python 3.13 on a host without
 `/etc/mime.types` (they failed there before; the maintainer's machine has the file, so upstream CI is green).
-Run as CI does (`pytest tests/ -q -W error`): 245 passed, 9 skipped on 3.13 and 3.14.
+Run as CI does (`pytest tests/ -q -W error`, call packages installed): 475 passed, 9 skipped on 3.13 and 3.14.

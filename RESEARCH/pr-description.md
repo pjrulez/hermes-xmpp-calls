@@ -24,10 +24,18 @@ message when you do not pick up.
 
 ## It is off by default
 
-`xmpp.calls.enabled` is `false`. While it is off, no call code is imported and the optional
-dependencies (`aiortc`, `av`, `numpy`, `webrtcvad-wheels`; Python 3.13+) are not needed. They can be
-installed into the Hermes environment or into a `vendor/` folder next to the plugin, which is
-appended to `sys.path` after Hermes' own packages.
+`xmpp.calls.enabled` is `false`. While it is off, no call code is imported and the call packages
+(`aiortc`, `av`, `numpy`, `webrtcvad-wheels`; Python 3.13+) are never downloaded.
+
+They are big (about 230 MB: PyAV's bundled FFmpeg is most of it), so they are not in
+`pip_dependencies`. With calls on, the first start builds an isolated Hermes environment for
+them with `pm.ensure_environment()` under `<hermes root>/environments/hermes-xmpp-calls/`, from
+`requirements-calls.txt`. That environment is outside the plugin folder and outside the main venv,
+so `hermes update` (which re-syncs the main venv) does not prune it, and a plugin update leaves it
+alone. Its `site-packages` is appended to `sys.path`, so Hermes' own numpy/av/cryptography win; it
+is refused when its Python differs from Hermes'. `av` follows aiortc's own range (`>=14`).
+If `pm.ensure_environment` is missing (older Hermes) or lazy installs are off (Docker), a
+`vendor/` folder next to the plugin is used instead, and the log prints the command to fill it.
 
 ## Configuration
 
@@ -50,7 +58,7 @@ xmpp:
   calls:
     enabled: false          # master switch
     allowed_users: []       # who may call and be called; empty = every xmpp.allowed_users JID
-                            # except plaintext_peers and agent_peers
+                            # except agent_peers
     max_seconds: 600        # hard limit: the call ends this long after it was accepted
     greeting: "Hi, I'm here. What can I do for you?"   # "" = silence (incoming calls)
     silence_ms: 800         # pause that ends your turn (raise to 1000-1500 if you get cut off)
@@ -97,12 +105,10 @@ Related settings added by this PR (they also apply with calls off):
 ```yaml
 xmpp:
   agent_peers: [hermes-worker@example.org]   # partner agents; XMPP_AGENT_PEERS
-  plaintext_peers: []                        # bare JIDs that never get OMEMO; XMPP_PLAINTEXT_PEERS
 ```
 
 `agent_peers` marks other bots: their messages are rate-limited (4 per 10 minutes) so two agents
-cannot loop, and the gateway's own status lines are not exchanged with them. `plaintext_peers` is
-an opt-in escape hatch for a peer that cannot do OMEMO; it is empty by default.
+cannot loop, and the gateway's own status lines are not exchanged with them.
 
 ### Example: a phone agent and a worker that runs cron jobs
 
@@ -132,12 +138,9 @@ and subscribes back).
 
 ## Behaviour changes that apply even with calls off
 
-1. **OMEMO key store safety.** One process per store file (an `flock` on `<file>.lock`),
-   atomic owner-only (0600) writes, and the adapter refuses to start OMEMO when the file exists but
-   cannot be read, instead of silently starting empty (a new identity key breaks every existing
-   session). Several storage objects for one file in one process share their data. Reason: two
-   gateways sharing one home, or a crash during a write, otherwise destroy the double ratchets.
-2. `xmpp.plaintext_peers` and `xmpp.agent_peers` (above).
+1. `xmpp.agent_peers` (above).
+2. `xmpp_message` is offered whenever the adapter is connected; it needs neither `calls.enabled`
+   nor the call packages (a worker profile that only sends text needs no aiortc).
 3. Gateway status lines (tool progress, "interrupting" and similar) are no longer relayed to or
    acted on from a partner agent.
 
@@ -154,8 +157,7 @@ and subscribes back).
 - Call audio goes to whichever `stt`/`tts` providers you configured: with a cloud provider it
   leaves your machine.
 - Known limits, documented in the README: host candidates reveal local addresses to the peer
-  (use TURN-only networks if that matters); if OMEMO fails to initialise the adapter falls back to
-  plaintext as it already did; `xmpp_message` can reach any allowed user.
+  (use TURN-only networks if that matters); `xmpp_message` can reach any allowed user.
 
 ## Commits
 
@@ -164,8 +166,12 @@ and subscribes back).
 2. `feat(calls): conversation engine, call lifecycle and text fallbacks` - `calls/audio.py`,
    `speech.py`, `conversation.py`, `controller.py`, `hermes_host.py`, and 179 tests with a real
    aiortc peer and recorded Conversations/Dino stanzas.
-3. `feat(calls): Hermes integration, agent tools and OMEMO store safety` - `adapter.py`,
-   `plugin.yaml`, README, CHANGELOG, adapter tests.
+3. `feat(calls): Hermes integration, agent tools and an optional environment for the call
+   packages` - `adapter.py`, `call_packages.py`, `plugin.yaml` (0.5.0), README, CHANGELOG, CI,
+   adapter tests.
+
+The OMEMO key-store work that was part of the first version of this PR is now a separate PR
+(see the review discussion), so this one does not change how an OMEMO store is read or written.
 
 The engine under `calls/` is developed and reviewed in
 https://github.com/pjrulez/hermes-xmpp-calls (research notes, OpenSpec change records, two
@@ -174,13 +180,18 @@ plugin.
 
 ## Testing
 
-- Run exactly as the repository CI does (`pytest tests/ -q -W error`, upstream's pinned
-  dependencies, standalone checkout): 592 passed, 9 skipped on Python 3.14. Without the optional
-  call dependencies: 359 passed, 18 skipped (the engine tests skip themselves).
-- On Python 3.13 the same run passes except two `test_outgoing_voice_serialization` cases that
-  fail identically on current `main` (not touched by this PR).
-- Nothing in `requirements.txt` or `requirements-dev.txt` is changed; the new
-  `requirements-calls.txt` is only for the optional call dependencies.
+- Run as the repository CI does (`pytest tests/ -q -W error`, upstream's pinned dependencies,
+  standalone checkout, `requirements-calls.txt` installed and `XMPP_REQUIRE_CALL_DEPS=1`, so a missing call
+  package fails the run instead of silently skipping the 179 engine tests): 585 passed, 9
+  skipped on Python 3.14. Without the call packages: 360 passed, 18 skipped.
+- The workflow installs `requirements-calls.txt` and sets `XMPP_REQUIRE_CALL_DEPS=1`.
+- Python 3.13 on a machine without `/etc/mime.types`: two `test_outgoing_voice_serialization`
+  cases fail the same way on current `main`: 3.13's `mimetypes` only knows `.ogg` from the system
+  file (3.14 has it built in). Not touched by this PR.
+- Nothing in `requirements.txt` or `requirements-dev.txt` is changed.
+- `call_packages.provide()` is unit-tested (environment, `vendor/` fallback, failure, Python mismatch) and
+  was run once for real against Hermes' `pm`: environment built in 6.5 s, 227 MB, aiortc from the
+  environment, Hermes' own av and numpy used.
 - Live: calls with Conversations (Android), Dino (Linux) and Monal (iOS) to a bot on three hosts, including
   incoming, outgoing, hang-up in the middle of a request, no-answer fallback to text, 60 s idle
   hang-up, and an agent-initiated call started by a hand-off message from another agent. 50 consecutive calls leave file descriptors, threads and tasks

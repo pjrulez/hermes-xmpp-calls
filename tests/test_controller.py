@@ -383,8 +383,9 @@ async def test_hang_up_after_ends_the_call_when_the_opening_is_done() -> None:
     ctl.calls[sid].convo.playback.flush()
     await asyncio.sleep(0.2)
     assert sid in ctl.calls  # warning beeps, then the caller gets a moment to speak
-    for _ in range(40):
-        if sid not in ctl.calls:
+    # end() drops the call first and sends session-terminate after closing the media
+    for _ in range(100):
+        if sid not in ctl.calls and client.jingle_sent()[-1].action == "session-terminate":
             break
         await asyncio.sleep(0.05)
     assert sid not in ctl.calls

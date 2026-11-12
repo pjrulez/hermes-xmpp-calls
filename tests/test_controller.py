@@ -531,7 +531,7 @@ def test_session_title_templates() -> None:
         assert render(bad, **values) is None, bad
 
 
-def test_a_persons_one_session_is_titled_when_its_title_changes() -> None:
+def test_every_call_asks_the_host_to_title_its_session() -> None:
     ctl, _ = make()
     ctl.config = CallConfig(session="per_peer", session_title="Calls with {name} ({date})")
     seen: list[str] = []
@@ -542,16 +542,17 @@ def test_a_persons_one_session_is_titled_when_its_title_changes() -> None:
     ctl.host.name_call = name_call  # type: ignore[method-assign]
 
     async def run() -> None:
-        for _ in range(3):  # three calls, same day, same person: titled once
+        for _ in range(2):  # the host decides whether the person's session already has a title
             ctl._name("sid", "owner@example.org", "from")
         ctl.config = CallConfig(session="per_peer", session_title="{nope}")  # unusable: default
         ctl._name("sid", "owner@example.org", "from")
         await asyncio.sleep(0.05)
 
     asyncio.run(run())
-    assert len(seen) == 2
+    assert len(seen) == 3
+    assert seen[0] == seen[1]
     assert seen[0].startswith("Calls with owner (20")
-    assert seen[1] == "Calls with owner"
+    assert seen[2] == "Calls with owner"
 
 
 def test_topic_cannot_smuggle_a_command_into_the_title() -> None:

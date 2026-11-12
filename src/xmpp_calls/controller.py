@@ -178,7 +178,6 @@ class CallController:
         self._closed = asyncio.Event()
         self._proposals: dict[tuple[str, str], str] = {}
         self._last_greeting = ""
-        self._titles: dict[str, str] = {}  # per_peer: the title last given to a person's session
         self._missed: dict[str, str] = {}  # peer -> text sent instead of a call nobody answered
 
     # ---- wiring -------------------------------------------------------------------------
@@ -521,7 +520,8 @@ class CallController:
 
     def _name(self, sid: str, bare: str, direction: str, topic: str = "") -> None:
         """Title the call's session from `config.session_title` (default: "Call from|to <person>
-        <YYYY-MM-DD HH:MM> [<topic>]", or "Calls with <person>" for one session per person)."""
+        <YYYY-MM-DD HH:MM> [<topic>]", or "Calls with <person>" for one session per person). The
+        host titles a session once and makes the title unique, so this runs for every call."""
         now = datetime.now()
         values = {
             "direction": direction,
@@ -539,10 +539,6 @@ class CallController:
                 self.config.session_title,
             )
             title = render_title(default, **values) or "Call"
-        if self.config.session == "per_peer":
-            if self._titles.get(bare) == title:
-                return  # the person's one session already has this title
-            self._titles[bare] = title
         task = asyncio.create_task(self.host.name_call(bare, sid, title))
         self._background.add(task)
         task.add_done_callback(self._background.discard)

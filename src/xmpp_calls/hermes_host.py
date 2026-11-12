@@ -179,6 +179,31 @@ class HermesCallHost:
             return False
         return True
 
+    async def _free_title(self, source: Any, title: str) -> str | None:
+        """Hermes keeps session titles unique and refuses a taken one (silently here), so ask first.
+        None: the call's session already has a title, keep it (the next call of a per_peer person,
+        or a session that was reset and is titled again). Else the title, or Hermes' own numbering
+        ("title #2") when another session has it. Without the gateway's session database (older
+        Hermes) the title is sent as it is."""
+        runner = getattr(self.adapter, "gateway_runner", None)
+        db = getattr(runner, "_session_db", None)
+        store = getattr(runner, "async_session_store", None)
+        if db is None or store is None:
+            return title
+        try:
+            from hermes_state import SessionDB  # type: ignore[import-not-found]
+
+            title = SessionDB.sanitize_title(title) or title
+            entry = await store.get_or_create_session(source)
+            if await db.get_session_title(entry.session_id):
+                return None
+            return str(await db.get_next_title_in_lineage(title))
+        except Exception:
+            logging.debug(
+                "calls: could not look up the session title; sending it as it is", exc_info=True
+            )
+            return title
+
     async def name_call(self, peer: str, call_id: str, title: str) -> None:
         """Title the call's session with the built-in /title command; its acknowledgement is
         not sent to the chat. Needs a live gateway: any failure is logged and ignored."""
@@ -190,11 +215,14 @@ class HermesCallHost:
         message_id = f"call-title-{call_id}"
         self._silent.add(message_id)
         try:
+            source = self._source(peer, call_id)
+            if (free := await self._free_title(source, title)) is None:
+                return
             await self.adapter.handle_message(
                 MessageEvent(
-                    text=f"/title {title}",
+                    text=f"/title {free}",
                     message_type=MessageType.COMMAND,
-                    source=self._source(peer, call_id),
+                    source=source,
                     message_id=message_id,
                 )
             )

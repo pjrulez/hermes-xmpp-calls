@@ -94,11 +94,15 @@ A call SHALL end when it has lasted `max_seconds` (default 600), measured from a
 - **THEN** the call ends and the answer arrives as text
 
 ### Requirement: Call sessions are configurable
-A call SHALL run in a Hermes session of its own, never in the person's text chat session. `session` SHALL be `per_call` (default: a new session for every call) or `per_peer` (one persistent session per person shared by all their calls); any other value SHALL log a warning and mean `per_call`. `session_title` SHALL be a template over `direction`, `name`, `jid`, `time`, `date` and `topic`; a template that names another field SHALL be refused with a warning and the default for the mode used. A `per_peer` session SHALL be re-titled only when the rendered title changes.
+A call SHALL run in a Hermes session of its own, never in the person's text chat session. `session` SHALL be `per_call` (default: a new session for every call) or `per_peer` (one persistent session per person shared by all their calls); any other value SHALL log a warning and mean `per_call`. `session_title` SHALL be a template over `direction`, `name`, `jid`, `time`, `date` and `topic`; a template that names another field SHALL be refused with a warning and the default for the mode used. A session SHALL be titled once, when it has no title yet; a title another session already has SHALL get Hermes' own numbering (`title #2`).
 
 #### Scenario: One session per person
 - **WHEN** `session` is `per_peer` and the same person calls twice
 - **THEN** both calls use the same session and the agent sees the first call's history in the second
+
+#### Scenario: Title already taken
+- **WHEN** two calls render the same title
+- **THEN** the second session is titled `<title> #2` instead of staying untitled
 
 #### Scenario: Unusable title template
 - **WHEN** `session_title` contains `{nope}`

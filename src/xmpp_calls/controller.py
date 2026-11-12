@@ -431,7 +431,8 @@ class CallController:
             return  # unknown sid, or somebody else's call
         call.session.apply(jingle.action, sent_by_us=False)
         if jingle.action == "session-info":
-            return self._session_info(call, jingle)
+            self._session_info(call, jingle)
+            return
         if jingle.action == "session-accept":
             await call.media.accept(jingle)
             call.accepted.set()

@@ -21,7 +21,7 @@ from xmpp_calls.jingle.model import Jingle
 def iq(jingle, sender=PEER):
     stream = slixmpp.ClientXMPP("bot@example.org/res", "unused")
     replies = []
-    cast(Any, stream).send = lambda stanza: replies.append(deepcopy(stanza.xml))
+    cast("Any", stream).send = lambda stanza: replies.append(deepcopy(stanza.xml))
     stanza = slixmpp.Iq(stream=stream)
     stanza["from"], stanza["to"], stanza["type"] = sender, "bot@example.org/res", "set"
     stanza.xml.append(wire.build(jingle))
@@ -170,7 +170,7 @@ async def test_received_jmi_carbons_require_authenticated_wrapper(
         ),
         stream=client,
     )
-    handlers = [h for h in cast(Any, client)._XMLStream__handlers if h.name.startswith("calls-")]
+    handlers = [h for h in cast("Any", client)._XMLStream__handlers if h.name.startswith("calls-")]
     matched = [h for h in handlers if h.match(message)]
     if wrapper == "received":
         assert len(matched) == 1
@@ -389,7 +389,7 @@ async def test_close_cancels_media_setups(monkeypatch, stage):
             result = await task
             assert isinstance(result, str)
             assert result.startswith("closed")
-        assert cast(FakeHost, ctl.host).texts == []
+        assert cast("FakeHost", ctl.host).texts == []
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
@@ -418,7 +418,7 @@ async def test_close_wakes_outgoing_busy_and_retry_waits(waiting):
         await eventually(task.done)
         assert (await task).startswith("closed")
         assert len([v for _, v in client.jmi_sent() if v == "propose"]) <= 1
-        assert cast(FakeHost, ctl.host).texts == []
+        assert cast("FakeHost", ctl.host).texts == []
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
@@ -486,7 +486,7 @@ async def test_remote_terminate_wakes_outgoing_wait_without_missed_call(monkeypa
         assert "decline" in result
         assert "timeout" not in result
         assert "no answer" not in result
-        assert cast(FakeHost, ctl.host).texts == []
+        assert cast("FakeHost", ctl.host).texts == []
         assert ctl.calls == {}
         assert not any(j.action == "session-terminate" for j in client.jingle_sent())
     finally:
@@ -512,7 +512,7 @@ async def test_close_wakes_outgoing_acceptance_and_connection_waits(monkeypatch,
         assert (await task).startswith("closed")
         assert ctl.calls == {}
         assert ctl._ringing == {}
-        assert cast(FakeHost, ctl.host).texts == []
+        assert cast("FakeHost", ctl.host).texts == []
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
@@ -543,7 +543,7 @@ async def test_close_releases_ringing_and_ignores_late_proceed(ring_timeout) -> 
         assert ctl.calls == {}
         assert client.jingle_sent() == []
         assert client.jmi_sent()[-1][1] == "retract"
-        assert cast(FakeHost, ctl.host).texts == []
+        assert cast("FakeHost", ctl.host).texts == []
         assert (await ctl.place_call("owner@example.org", "Later")).startswith("closed")
     finally:
         task.cancel()

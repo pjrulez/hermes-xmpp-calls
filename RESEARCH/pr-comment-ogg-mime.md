@@ -1,0 +1,4 @@
+Thank you for checking it on a stripped host instead of trusting CI, and for the detailed check of both interpreters.
+
+1. Added a `[Unreleased]` entry to `CHANGELOG.md` (second commit on this branch).
+2. On the attachments note: I checked, and the common types are not affected. Python's built-in table (it does not come from `/etc/mime.types`) already covers `.jpg`, `.png`, `.gif`, `.webp`, `.mp4`, `.pdf`, `.txt`, `.zip` and so on: with `MimeTypes(filenames=[])` they are all typed on 3.13.14 and 3.14.9. What the stripped table loses on 3.13 is `.ogg`, `.oga`, `.m4a` and `.flac` (all in this PR's voice table) plus `.mkv`, `.docx`, `.xlsx` and `.odt`; on 3.14 only `.oga`. For those few document types slixmpp falls back to `application/octet-stream`, which a file download tolerates. So I would leave attachments alone and not grow the table, unless you have seen a client mishandle one.

@@ -111,7 +111,7 @@ class LogBot(slixmpp.ClientXMPP):
         self.send_presence(pto=peer, ptype="subscribe")
 
     async def on_jmi(self, stanza: StanzaBase) -> None:
-        msg = cast(slixmpp.Message, stanza)
+        msg = cast("slixmpp.Message", stanza)
         child = next((c for c in msg.xml if c.tag.startswith(f"{{{JMI}}}")), None)
         if child is None:
             return
@@ -138,7 +138,7 @@ class LogBot(slixmpp.ClientXMPP):
         (self.outdir / f"features-{tag}.txt").write_text(features + "\n")
 
     async def on_jingle(self, stanza: StanzaBase) -> None:
-        iq = cast(slixmpp.Iq, stanza)
+        iq = cast("slixmpp.Iq", stanza)
         jingle = iq.xml.find(f"{{{JINGLE}}}jingle")
         if jingle is None or iq["type"] != "set":
             return

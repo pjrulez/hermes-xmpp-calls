@@ -37,7 +37,19 @@ src = ["src", "tests"]
 extend-exclude = [".claude", ".hermes"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "ASYNC", "SIM", "RUF", "PT"]
+select = [
+    "E", "F", "I", "B", "UP", "ASYNC", "SIM", "RUF", "PT",
+    "C4", "PERF", "PIE", "FURB", "A", "PLE", "PLW", "RET", "TC006", "N", "T20", "S110", "S112",
+]
+# N818: IllegalTransition and friends are public names of the library, an Error suffix buys nothing.
+# Deliberately not enabled: LOG015 (the engine logs through the root logger, 45 calls: change it
+# on its own), PTH, ARG, PLR2004, TRY003 and D (noise, no bugs found).
+ignore = ["N818"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["T201"]  # command-line tools print
+"tests/*" = ["T201"]
+"RESEARCH/*" = ["T201", "S110"]  # one-off evidence scripts
 
 [tool.pyrefly]
 project-includes = ["src", "tests"]

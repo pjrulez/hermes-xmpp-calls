@@ -26,7 +26,7 @@ async def test_tone_is_echoed_with_trickled_candidates() -> None:
         async def read() -> None:
             while True:
                 frame = await track.recv()
-                heard.append(cast(av.AudioFrame, frame).to_ndarray().reshape(-1, 2)[:, 0])
+                heard.append(cast("av.AudioFrame", frame).to_ndarray().reshape(-1, 2)[:, 0])
 
         readers.append(asyncio.ensure_future(read()))
 

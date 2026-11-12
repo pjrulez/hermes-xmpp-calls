@@ -36,10 +36,14 @@ def port(source: str) -> bytes:
     source = neutral(re.sub(r"\bxmpp_calls\b", "calls", source))
     # the plugin's pytest runs in strict asyncio mode (the dev project uses auto): mark each one
     source = re.sub(
-        r"^async def test_", "@pytest.mark.asyncio\nasync def test_", source, flags=re.M
+        r"^async def test_", "@pytest.mark.asyncio\nasync def test_", source, flags=re.MULTILINE
     )
-    if "@pytest.mark.asyncio" in source and not re.search(r"^import pytest$", source, flags=re.M):
-        source = re.sub(r"^(import |from )", r"import pytest\n\1", source, count=1, flags=re.M)
+    if "@pytest.mark.asyncio" in source and not re.search(
+        r"^import pytest$", source, flags=re.MULTILINE
+    ):
+        source = re.sub(
+            r"^(import |from )", r"import pytest\n\1", source, count=1, flags=re.MULTILINE
+        )
     source = source.replace("from tests.", "from .")
     source = source.replace(
         'Path(__file__).parent.parent / "RESEARCH/evidence/jmi-jingle-captures"',

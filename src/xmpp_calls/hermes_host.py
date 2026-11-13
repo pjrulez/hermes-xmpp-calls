@@ -18,9 +18,11 @@ from .speech import HANGUP
 CALL_PROMPT = (
     "This message is spoken on a live phone call and your reply is read aloud. Answer in one to "
     "three short sentences of plain words: no markdown, lists, links or code, and no closing "
-    f"notes about what you skipped or checked. If the caller says goodbye, end with {HANGUP}. "
+    "notes about what you skipped or checked. If the caller says goodbye, bye bye or talk to you "
+    f"later, end with {HANGUP}; a bare 'bye' is not enough (it is often a misheard 'by'). "
     "Always answer out loud: on a call never reply with [SILENT] or an empty message."
 )
+MAX_TITLE = 100  # Hermes' limit for a session title
 NO_REPLY = "returned only a silence marker"  # the gateway's text for a bare [SILENT]
 NUDGE = "[Your last reply was empty. Answer the caller out loud in one short sentence.] "
 TURN_TIMEOUT = 180.0
@@ -197,7 +199,10 @@ class HermesCallHost:
             entry = await store.get_or_create_session(source)
             if await db.get_session_title(entry.session_id):
                 return None
-            return str(await db.get_next_title_in_lineage(title))
+            free = str(await db.get_next_title_in_lineage(title))
+            if len(free) > MAX_TITLE:  # " #2" does not fit: shorten the base, then number it
+                free = str(await db.get_next_title_in_lineage(title[: MAX_TITLE - 5]))[:MAX_TITLE]
+            return free
         except Exception:
             logging.debug(
                 "calls: could not look up the session title; sending it as it is", exc_info=True

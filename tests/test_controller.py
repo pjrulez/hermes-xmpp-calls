@@ -338,6 +338,21 @@ async def test_the_call_says_once_that_it_will_end_and_still_ends_on_time(monkey
     await phone.close()
 
 
+async def test_a_heads_up_queued_before_hang_up_is_not_sent_as_text() -> None:
+    said: list[str] = []
+
+    class Convo:
+        closed = True
+
+        async def say(self, text: str, **_: Any) -> None:
+            said.append(text)
+
+    await controller.CallController._heads_up(Convo())  # type: ignore[arg-type]
+    Convo.closed = False
+    await controller.CallController._heads_up(Convo())  # type: ignore[arg-type]
+    assert said == [controller.HEADS_UP]
+
+
 async def test_greeting_is_one_of_the_phrases_spoken_cached_and_never_twice_in_a_row() -> None:
     ctl, _ = make()
     said: list[tuple[str, bool]] = []

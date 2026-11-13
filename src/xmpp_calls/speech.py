@@ -15,6 +15,9 @@ MIN_SENTENCE = 25  # shorter pieces are merged forward: each TTS call costs ~1 s
 
 # What Whisper-style models "hear" in room noise or silence.
 _PHANTOMS = {"thank you", "thanks", "thank you for watching", "thanks for watching", "you", "bye"}
+# A lone "bye" (or "by", which is what it sounds like) is never a goodbye, however long it took to
+# say. "Bye bye" and "goodbye" are not in this set and reach the agent.
+_NEVER_A_GOODBYE = {"bye", "by"}
 PHANTOM_MAX_S = 3.0
 
 
@@ -23,6 +26,8 @@ def is_phantom(text: str, seconds: float) -> bool:
     letters = re.sub(r"[^a-z ]", "", text.lower()).strip()
     if not any(c.isalnum() for c in text) or re.fullmatch(r"[\[(].*[\])]", text.strip()):
         return True  # "♪♪♪", "[music]", "(silence)": sound effects, not words
+    if letters in _NEVER_A_GOODBYE:
+        return True
     if letters in _PHANTOMS:
         return seconds < PHANTOM_MAX_S
     # "Thank you. Thank you. Thank you.": the same stock phrase over and over, at any length

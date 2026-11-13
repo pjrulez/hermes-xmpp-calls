@@ -801,10 +801,15 @@ class CallController:
                     warned = True
                     logging.info("calls: %s ends in %d s, saying so", sid[:8], HEADS_UP_S)
                     # its own task: queued behind the sentence being spoken, never waited for here
-                    task = asyncio.create_task(call.convo.say(HEADS_UP, cached=True))
+                    task = asyncio.create_task(self._heads_up(call.convo))
                     self._background.add(task)
                     task.add_done_callback(self._background.discard)
         await self.end(sid, "success", notify=True)
+
+    @staticmethod
+    async def _heads_up(convo: Conversation) -> None:
+        if not convo.closed:  # after hang-up `say` would send the notice as a chat text
+            await convo.say(HEADS_UP, cached=True)
 
     async def end(self, sid: str, reason: str | None, notify: str | bool = False) -> None:
         """Close one call; with `reason`, tell the peer (`notify`: its JID, or True)."""

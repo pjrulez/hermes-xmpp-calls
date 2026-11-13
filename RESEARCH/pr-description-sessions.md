@@ -1,8 +1,7 @@
 Title: feat(calls): session modes (per_call, per_peer), session_title and a spoken time-limit notice
 
-Draft. Based on current `main` and independent of the OMEMO PR (#16). One commit: `feat(calls): session
-modes ...`. Bumps the plugin to 0.6.0 (new options) and adds the missing `[Unreleased]` changelog
-entry for #17 under Fixed.
+Draft. Based on current `main` (after #15, #16 and #17). One commit: `feat(calls): session modes ...`.
+Bumps the plugin to 0.6.0 (new options) and adds the missing changelog entry for #17 under Fixed.
 
 ## What it changes
 
@@ -19,12 +18,17 @@ entry for #17 under Fixed.
    stray brace logs a warning and the default is used. Hermes keeps session titles unique and
    refuses a taken one (the plugin used to swallow that reply, leaving the session untitled), so
    the host asks the session database first: a session is titled once, and a taken title gets
-   Hermes' own numbering (`Calls with sam #2`). Without the gateway's session database (older
-   Hermes) the title is sent as it is.
+   Hermes' own numbering (`Calls with sam #2`), shortened first if the number would not fit
+   Hermes' 100-character limit. Without the gateway's session database (older Hermes) the title
+   is sent as it is.
 3. **A spoken heads-up**: 30 s before `max_seconds` the call says once "This call will end in
    thirty seconds." It is queued behind the sentence being spoken, never delays the cut, and is
    skipped for very short limits and for `max_seconds: false`. Nothing extends the limit.
    (This was specified in the first PR and left out of it.)
+4. **A lone "bye" is never a goodbye.** The call already drops short stock phrases such as "Thank
+   you." as speech-to-text noise; a lone "Bye" (or "By", which it sounds like) is now dropped at any
+   length, and the call prompt tells the agent that only "goodbye", "bye bye" or similar ends the
+   call. Too easily misheard to hang up on.
 
 ```yaml
 xmpp:
@@ -61,4 +65,6 @@ below for the options and a request for your view.
 `render_title` table (fields, whitespace, injection, bad templates), every call asking the host to
 title, the host titling once with unique `#N` titles (and never blocking a call when the database
 fails), adapter parsing of both keys, thread id per mode, and a controller test that
-the heads-up is spoken once and the call still ends on time. Counts with this PR: 479 passed and 9 skipped on 3.13 and 3.14 (call packages installed), 262 passed without them.
+the heads-up is spoken once and the call still ends on time (and not as chat text after hang-up), the "bye"
+cases, and a 100-character title that must still fit its `#2`. Counts with this PR on top of current
+`main`: 498 passed and 9 skipped on 3.13 and 3.14 (call packages installed), 269 passed without them.

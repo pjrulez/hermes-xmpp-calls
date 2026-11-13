@@ -4,9 +4,12 @@ Live audio calls with a Hermes Agent over XMPP, answered from Conversations (And
 Call `hermes-<host>-default@xmpp.example.org`, talk, hear streamed answers, interrupt.
 Audio stays on our own stack: Whisper (STT) and PocketTTS (TTS) on `fw` through `fw-audio-control`.
 
-Scope: a private Prosody on the tailnet. Public Internet deployment is out of scope. Test clients: Dino (Linux), Conversations (Android), Monal (iOS).
+Scope: a private Prosody on the tailnet. Public Internet deployment is out of scope. Test clients: Dino (Linux), Conversations (Android), Monal (iOS), Monocles Chat (Android).
 
-Status: **implemented and in daily use; the plugin pull request is in review preparation.**
+Status: **implemented and in daily use. The calls feature, the OMEMO key-store safety work and a voice
+content-type fix are merged into [fastfinge/hermes-xmpp-plugin](https://github.com/fastfinge/hermes-xmpp-plugin)
+(#15, #16, #17); call session modes are a draft PR (#18) and questions about attachments and OMEMO media
+are open (#19).** The review texts and replies are in `RESEARCH/pr-*.md`.
 
 ## About this repository
 This is the development workspace for live audio calls in [`hermes-xmpp-plugin`](https://github.com/pjrulez/hermes-xmpp-plugin). The call engine in `src/xmpp_calls/` is copied into that plugin as `calls/` (with its tests) by `scripts/sync_plugin.py`; the plugin, not this repository, is what gets installed and what is proposed upstream. This repository keeps the research notes, OpenSpec change records, security and lifecycle reviews, and the evidence behind them. Jingle and RTP signalling were written from the XEPs; no code was copied from GPL, AGPL or MPL projects (see `RESEARCH/05-approach-decision.md`).
@@ -15,7 +18,7 @@ This is the development workspace for live audio calls in [`hermes-xmpp-plugin`]
 - `RESEARCH/` verified findings, open questions, dependency options, evidence scripts.
 - `openspec/changes/` one umbrella change (`add-xmpp-audio-calls`) plus one change per dependency.
 - `src/xmpp_calls/` development tree for the call engine (moves into the plugin fork).
-- `plugin/` git-ignored working clone of the fork (`feat/xmpp-calls`); `.scratch/` git-ignored disposable files.
+- `plugin/` git-ignored working clone of the fork (branches per PR; see `RESEARCH/`); `.scratch/` git-ignored disposable files.
 - `AGENTS.md` working rules.
 
 ## Development
@@ -24,6 +27,7 @@ uv sync            # Python 3.14, runtime and dev dependencies
 uv run prek install
 uv run pytest
 uv run ruff check && uv run ruff format --check && uv run pyrefly check
+uv run python scripts/check_plugin.py   # lint what we changed in plugin/ against upstream/main
 ```
 Hooks run ruff check, ruff format --check and pyrefly on every commit.
 
